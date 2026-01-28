@@ -1,5 +1,52 @@
 # VCF Field Demo Lab - CLI Commands with Context State
 
+## Lab Overview
+
+This lab deploys an **OpenCart hybrid application** (MySQL VM backend + containerized frontend) across two namespaces, first manually then automated via GitOps.
+
+### Module & Chapter Summary
+
+| Module | Chapter | What Happens | CLI? |
+|--------|---------|-------------|------|
+| **1** | — | Lab orientation, verify ready status | No |
+| **2** | Ch1: Declarative API | Review pre-deployed vSphere Supervisor | No |
+| | [Ch2: VM Service](#chapter-2-managing-virtual-machines-with-vm-service) | Create VM Class, Content Library, `dev-xxxxx` namespace. Set up VCF CLI context | **Yes** |
+| | Ch3: Managing Services | Verify Harbor, register ArgoCD + LCI services on Supervisor | No |
+| | Ch4: VKS Updates | Upload VKS 3.4.0 package, install on Supervisor | No |
+| | Ch5: Monitoring | Review Supervisor + `prod-vks-01` in VCF Operations | No |
+| **3** | Ch1: Provider Setup | Review infrastructure: vCenters, Regions, VM Classes, Networking | No |
+| | Ch2: Org Setup | Review Broadcom org, add `custom-small` VM Class to entitlements | No |
+| **4** | Ch1: Overview | Architecture review of OpenCart hybrid app | No |
+| | Ch2: Deploy VM | Create `oc-mysql` VM + LB in `dev-xxxxx` (GUI). Download YAML manifests | No |
+| | [Ch3: Harbor](#chapter-3-uploading-containers-images-to-harbor) | Docker tag + push OpenCart image to Harbor | **Yes** |
+| | [Ch4: VKS](#chapter-4-managing-kubernetes-clusters-with-vsphere-kubernetes-service-vks) | **MANUAL in `dev-xxxxx`**: Create `vks-01` (GUI), configure CLI, install Prometheus + Telegraf, deploy OpenCart via `kubectl apply` | **Yes** |
+| | [Ch5: Argo CD](#chapter-5-enabling-continuous-delivery-with-argo-cd) | **AUTOMATED in `test-xxxxx`**: Deploy ArgoCD, push manifests to Gitea, ArgoCD auto-deploys vks-01 + oc-mysql + OpenCart. Demo GitOps sync | **Yes** |
+| **5** | — | Private AI Services (interactive simulation only) | No |
+
+### The Manual → GitOps Pattern
+
+The lab intentionally deploys the same stack twice to contrast manual vs automated approaches:
+
+**`dev-xxxxx` — Manual (Chapters 2–4):**
+1. `oc-mysql` VM created via GUI wizard
+2. `vks-01` cluster created via GUI wizard
+3. Prometheus + Telegraf installed via `vcf package install`
+4. OpenCart LB + app deployed via `kubectl apply`
+5. Download all YAML manifests from the GUI deployments
+
+**`test-xxxxx` — Automated via ArgoCD (Chapter 5):**
+1. Create `test-xxxxx` namespace + deploy ArgoCD instance
+2. Remove namespace references from downloaded YAMLs, upload to Gitea
+3. ArgoCD `opencart-infra` → auto-deploys vks-01 + oc-mysql + LBs
+4. ArgoCD `opencart-lb` + `opencart-app` → auto-deploys OpenCart on test vks-01
+5. Edit `vks-01.yaml` in Gitea (replicas 1→2) → ArgoCD auto-syncs
+
+> **Not automated by ArgoCD:** Prometheus and Telegraf — only installed manually on `dev-xxxxx` vks-01.
+
+---
+
+## Context Legend
+
 Each command is prefixed with the **active VCF/kubectl context** the student must be in.
 
 | Prefix | Meaning |
@@ -15,7 +62,7 @@ Each command is prefixed with the **active VCF/kubectl context** the student mus
 
 ---
 
-## Index
+## Command Index
 
 - [Module 2: Enabling VCF Cloud Services](#module-2-enabling-vcf-cloud-services)
   - [Chapter 2: Managing Virtual Machines with VM Service](#chapter-2-managing-virtual-machines-with-vm-service)
