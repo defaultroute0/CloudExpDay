@@ -4,6 +4,23 @@
 
 ---
 
+## Table of Contents
+
+- [Module 2: Enabling VCF Cloud Services](#module-2-enabling-vcf-cloud-services)
+  - [Chapter 2 — VM Service Setup](#chapter-2--vm-service-setup-pg-1851)
+  - [Chapter 3 — Add Services](#chapter-3--add-services-pg-6270)
+  - [Chapter 4 — VKS Update](#chapter-4--vks-update-pg-7984)
+- [Module 3: Building Cloud Topology](#module-3-building-cloud-topology)
+  - [Chapter 2 — Org Setup](#chapter-2--org-setup-pg-121122)
+- [Module 4: Consuming VCF Cloud Services](#module-4-consuming-vcf-cloud-services)
+  - [Chapter 2 — Deploy MySQL VM](#chapter-2--deploy-mysql-vm-pg-139154)
+  - [Chapter 3 — Harbor](#chapter-3--harbor-pg-159164)
+  - [Chapter 4 — vks-01 Cluster](#chapter-4--vks-01-cluster-pg-169222)
+  - [Chapter 5 — ArgoCD Setup](#chapter-5--argocd-setup-pg-229292)
+- [Quick Reference](#quick-reference)
+
+---
+
 ## Contexts You'll Use
 
 | Context | What it targets |
