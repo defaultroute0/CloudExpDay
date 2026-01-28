@@ -57,7 +57,7 @@ Each command is prefixed with the **active VCF/kubectl context** the student mus
 | `[terminal]` | No VCF context needed — shell/docker command or explicit `--kubeconfig` |
 | `[argocd]` | ArgoCD CLI session (separate auth from VCF contexts) |
 
-> **Context transitions** are called out with `→` annotations showing what changes.
+> **Context transitions** are called out with ⮕ annotations showing what changes.
 > Commands with explicit `--kubeconfig` bypass the active VCF context entirely.
 
 ---
@@ -85,20 +85,31 @@ Each command is prefixed with the **active VCF/kubectl context** the student mus
 
 ## Chapter 2: Managing Virtual Machines with VM Service
 
-```
-[terminal] CMD: (Pg 48)  vcf context create vcfa --endpoint auto-a.site-a.vcf.lab --api-token 0lraViAN9alcyYTZ0KlAuqLqrvEqxsr3 --tenant-name broadcom --ca-certificate vcfa-cert-chain.pem
-```
-> → **CREATES** context: `vcfa` (CCI type — auto-discovers dev-xxxxx namespace sub-contexts)
+> ⮕ **CONTEXT TRANSITION** — Creating initial VCF CLI context
 
+**Pg 48** · `[terminal]`
 ```
-[terminal] CMD: (Pg 49)  vcf context use
+vcf context create vcfa --endpoint auto-a.site-a.vcf.lab --api-token 0lraViAN9alcyYTZ0KlAuqLqrvEqxsr3 --tenant-name broadcom --ca-certificate vcfa-cert-chain.pem
 ```
-> → **SELECT** context: `vcfa:dev-xxxxx:default-project`
+Creates context `vcfa` (CCI type — auto-discovers `dev-xxxxx` namespace sub-contexts)
 
-| Context | Pg | Command |
-|---------|----|---------|
-| `vcfa:dev-xxxxx` | 50 | `kubectl get vm` |
-| `vcfa:dev-xxxxx` | 51 | `kubectl get vmi` |
+**Pg 49** · `[terminal]`
+```
+vcf context use
+```
+Interactive select — pick `vcfa:dev-xxxxx:default-project`
+
+> ⮕ **NOW IN:** `vcfa:dev-xxxxx`
+
+**Pg 50** · `[vcfa:dev-xxxxx]`
+```
+kubectl get vm
+```
+
+**Pg 51** · `[vcfa:dev-xxxxx]`
+```
+kubectl get vmi
+```
 
 ---
 
@@ -106,13 +117,30 @@ Each command is prefixed with the **active VCF/kubectl context** the student mus
 
 ## Chapter 3: Uploading containers images to Harbor
 
-| Context | Pg | Command |
-|---------|----|---------|
-| `terminal` | 160 | `docker login harbor-01a.site-a.vcf.lab` |
-| `terminal` | 161 | `docker image ls` |
-| `terminal` | 162 | `docker tag vcf-automation-docker-dev-local.usw5.packages.broadcom.com/bitnami/opencart:4.0.1-1-debian-11-r66 harbor-01a.site-a.vcf.lab/opencart/opencart:4.0.1-1-debian-11-r66` |
-| `terminal` | 163 | `docker push harbor-01a.site-a.vcf.lab/opencart/opencart:4.0.1-1-debian-11-r66` |
-| `terminal` | 164 | `docker image ls` |
+**Pg 160** · `[terminal]`
+```
+docker login harbor-01a.site-a.vcf.lab
+```
+
+**Pg 161** · `[terminal]`
+```
+docker image ls
+```
+
+**Pg 162** · `[terminal]`
+```
+docker tag vcf-automation-docker-dev-local.usw5.packages.broadcom.com/bitnami/opencart:4.0.1-1-debian-11-r66 harbor-01a.site-a.vcf.lab/opencart/opencart:4.0.1-1-debian-11-r66
+```
+
+**Pg 163** · `[terminal]`
+```
+docker push harbor-01a.site-a.vcf.lab/opencart/opencart:4.0.1-1-debian-11-r66
+```
+
+**Pg 164** · `[terminal]`
+```
+docker image ls
+```
 
 ---
 
@@ -120,70 +148,185 @@ Each command is prefixed with the **active VCF/kubectl context** the student mus
 
 ### Connect to dev namespace and register vks-01
 
-| Context | Pg | Command |
-|---------|----|---------|
-| `vcfa:dev-xxxxx` | 184 | `vcf context list` |
+**Pg 184** · `[vcfa:dev-xxxxx]`
+```
+vcf context list
+```
 
+**Pg 185** · `[vcfa:dev-xxxxx]`
 ```
-[vcfa:dev-xxxxx] CMD: (Pg 185)  vcf context use vcfa:dev-xxxxx:default-project
+vcf context use vcfa:dev-xxxxx:default-project
 ```
-> → **CONFIRMS** context: `vcfa:dev-xxxxx`
+Confirms you are in the `vcfa:dev-xxxxx` context
 
+**Pg 185** · `[vcfa:dev-xxxxx]`
 ```
-[vcfa:dev-xxxxx] CMD: (Pg 185)  vcf context use
+vcf context use
 ```
-> → (interactive select — pick `vcfa:dev-xxxxx:default-project`)
+Interactive select — pick `vcfa:dev-xxxxx:default-project`
 
-| Context | Pg | Command | Notes |
-|---------|----|---------|-------|
-| `vcfa:dev-xxxxx` | 185 | (provide token) e.g. `0lraViAN9alcyYTZ0KlAuqLqrvEqxsr3` | |
-| `vcfa:dev-xxxxx` | 185 | `kubectl config get-contexts` | *(optional)* verify context |
-| `vcfa:dev-xxxxx` | 186 | `vcf cluster list` | |
-| `vcfa:dev-xxxxx` | 187 | `vcf cluster register-vcfa-jwt-authenticator vks-01` | |
-| `vcfa:dev-xxxxx` | 188 | `vcf cluster kubeconfig get vks-01 --export-file ~/.kube/config` | |
-| `terminal` | 189 | `cat ~/.kube/config \|grep vks-01` | |
+**Pg 185** · `[vcfa:dev-xxxxx]` — Provide API token when prompted:
+```
+0lraViAN9alcyYTZ0KlAuqLqrvEqxsr3
+```
+
+**Pg 185** · `[vcfa:dev-xxxxx]` *(optional)*
+```
+kubectl config get-contexts
+```
+Verify context is set correctly
+
+**Pg 186** · `[vcfa:dev-xxxxx]`
+```
+vcf cluster list
+```
+
+**Pg 187** · `[vcfa:dev-xxxxx]`
+```
+vcf cluster register-vcfa-jwt-authenticator vks-01
+```
+
+**Pg 188** · `[vcfa:dev-xxxxx]`
+```
+vcf cluster kubeconfig get vks-01 --export-file ~/.kube/config
+```
+
+**Pg 189** · `[terminal]`
+```
+cat ~/.kube/config |grep vks-01
+```
 
 ### Create vks-01 context and switch to it
 
-```
-[vcfa:dev-xxxxx] CMD: (Pg 190)  vcf context create vks-01 --kubeconfig ~/.kube/config --kubecontext vcf-cli-vks-01-dev-xxxxx@vks-01-dev-xxxxx
-```
-> → **CREATES** context: `vks-01` (lab guide says select **cloud-consumption-interface** context type — still in `vcfa:dev-xxxxx`)
+> ⮕ **CONTEXT TRANSITION** — Creating vks-01 context (does NOT auto-switch)
 
-| Context | Pg | Command |
-|---------|----|---------|
-| `vcfa:dev-xxxxx` | 191 | `vcf context refresh` |
-| `vcfa:dev-xxxxx` | 192 | `vcf context list` |
+**Pg 190** · `[vcfa:dev-xxxxx]`
+```
+vcf context create vks-01 --kubeconfig ~/.kube/config --kubecontext vcf-cli-vks-01-dev-xxxxx@vks-01-dev-xxxxx
+```
+Creates context `vks-01` — select **cloud-consumption-interface** when prompted. You are still in `vcfa:dev-xxxxx`.
 
+**Pg 191** · `[vcfa:dev-xxxxx]`
 ```
-[vcfa:dev-xxxxx] CMD: (Pg 193)  vcf context use vks-01
+vcf context refresh
 ```
-> → **SWITCHES** context to: `vks-01`
+
+**Pg 192** · `[vcfa:dev-xxxxx]`
+```
+vcf context list
+```
+
+> ⮕ **CONTEXT TRANSITION** — Switching to vks-01
+
+**Pg 193** · `[vcfa:dev-xxxxx]`
+```
+vcf context use vks-01
+```
+
+> ⮕ **NOW IN:** `vks-01`
 
 ### Install packages and deploy OpenCart on vks-01
 
-| Context | Pg | Command | Notes |
-|---------|----|---------|-------|
-| `vks-01` | 194 | `kubectl get node` | |
-| `vks-01` | 195 | `vcf package repository add default-repo --url projects.packages.broadcom.com/vsphere/supervisor/packages/2025.8.19/vks-standard-packages:v2025.8.19 -n tkg-system` | |
-| `vks-01` | 196 | `vcf package available list -n tkg-system` | |
-| `terminal` | 197 | `cd Documents/Lab` | |
-| `vks-01` | 198 | `kubectl create ns prometheus-installed` | |
-| `terminal` | 199 | `cat prometheus-data-values.yaml \|grep storage` | |
-| `vks-01` | 199 | `kubectl get sc` | |
-| `vks-01` | 200 | `vcf package install prometheus -p prometheus.kubernetes.vmware.com --values-file prometheus-data-values.yaml -n prometheus-installed -v 3.5.0+vmware.1-vks.1` | |
-| `vks-01` | 201 | `kubectl get pods -n tanzu-system-monitoring` | |
-| `vks-01` | 202 | `kubectl create ns telegraf-installed` | |
-| `vks-01` | 203 | `vcf package install telegraf -p telegraf.kubernetes.vmware.com --values-file telegraf-data-values.yaml -n telegraf-installed -v 1.34.4+vmware.2-vks.1` | |
-| `vks-01` | 204 | `kubectl get pods -n tanzu-system-telegraf` | |
-| `vks-01` | 205 | `kubectl create namespace opencart` | |
-| `vks-01` | 206 | `kubectl label ns opencart pod-security.kubernetes.io/enforce=privileged` | |
-| `terminal` | 207 | `cat opencart-lb.yaml` | |
-| `vks-01` | 208 | `kubectl apply -f opencart-lb.yaml -n opencart` | |
-| `vks-01` | 209 | `kubectl get service -n opencart -w` | watch for external IP |
-| `vks-01` | 214 | `kubectl apply -f opencart.yaml -n opencart` | |
-| `vks-01` | 215 | `kubectl get all -n opencart` | |
-| `vks-01` | 222 | `kubectl get nodes` | |
+**Pg 194** · `[vks-01]`
+```
+kubectl get node
+```
+
+**Pg 195** · `[vks-01]`
+```
+vcf package repository add default-repo --url projects.packages.broadcom.com/vsphere/supervisor/packages/2025.8.19/vks-standard-packages:v2025.8.19 -n tkg-system
+```
+
+**Pg 196** · `[vks-01]`
+```
+vcf package available list -n tkg-system
+```
+
+**Pg 197** · `[terminal]`
+```
+cd Documents/Lab
+```
+
+**Pg 198** · `[vks-01]`
+```
+kubectl create ns prometheus-installed
+```
+
+**Pg 199** · `[terminal]`
+```
+cat prometheus-data-values.yaml |grep storage
+```
+
+**Pg 199** · `[vks-01]`
+```
+kubectl get sc
+```
+
+**Pg 200** · `[vks-01]`
+```
+vcf package install prometheus -p prometheus.kubernetes.vmware.com --values-file prometheus-data-values.yaml -n prometheus-installed -v 3.5.0+vmware.1-vks.1
+```
+
+**Pg 201** · `[vks-01]`
+```
+kubectl get pods -n tanzu-system-monitoring
+```
+
+**Pg 202** · `[vks-01]`
+```
+kubectl create ns telegraf-installed
+```
+
+**Pg 203** · `[vks-01]`
+```
+vcf package install telegraf -p telegraf.kubernetes.vmware.com --values-file telegraf-data-values.yaml -n telegraf-installed -v 1.34.4+vmware.2-vks.1
+```
+
+**Pg 204** · `[vks-01]`
+```
+kubectl get pods -n tanzu-system-telegraf
+```
+
+**Pg 205** · `[vks-01]`
+```
+kubectl create namespace opencart
+```
+
+**Pg 206** · `[vks-01]`
+```
+kubectl label ns opencart pod-security.kubernetes.io/enforce=privileged
+```
+
+**Pg 207** · `[terminal]`
+```
+cat opencart-lb.yaml
+```
+
+**Pg 208** · `[vks-01]`
+```
+kubectl apply -f opencart-lb.yaml -n opencart
+```
+
+**Pg 209** · `[vks-01]`
+```
+kubectl get service -n opencart -w
+```
+Watch for external IP to be assigned, then Ctrl+C
+
+**Pg 214** · `[vks-01]`
+```
+kubectl apply -f opencart.yaml -n opencart
+```
+
+**Pg 215** · `[vks-01]`
+```
+kubectl get all -n opencart
+```
+
+**Pg 222** · `[vks-01]`
+```
+kubectl get nodes
+```
 
 ---
 
@@ -191,60 +334,162 @@ Each command is prefixed with the **active VCF/kubectl context** the student mus
 
 ### Create supervisor context and switch to test namespace
 
-```
-[vks-01] CMD: (Pg 235)  vcf context create supervisor --endpoint 10.1.0.6 --username administrator@wld.sso --insecure-skip-tls-verify --auth-type basic
-```
-> → **CREATES** context: `supervisor` (K8S type — auto-discovers test-xxxxx namespace sub-contexts, still in `vks-01`)
+> ⮕ **CONTEXT TRANSITION** — Creating supervisor context (does NOT auto-switch)
 
+**Pg 235** · `[vks-01]`
 ```
-[vks-01] CMD: (Pg 236)  vcf context use
+vcf context create supervisor --endpoint 10.1.0.6 --username administrator@wld.sso --insecure-skip-tls-verify --auth-type basic
 ```
-> → **SELECT** context: `supervisor:test-xxxxx` (the test namespace on the Supervisor)
+Creates context `supervisor` (K8S type — auto-discovers `test-xxxxx` namespace sub-contexts). You are still in `vks-01`.
+
+**Pg 236** · `[vks-01]`
+```
+vcf context use
+```
+Interactive select — pick `supervisor:test-xxxxx`
+
+> ⮕ **NOW IN:** `supervisor:test-xxxxx`
 
 ### Deploy ArgoCD instance
 
-| Context | Pg | Command | Notes |
-|---------|----|---------|-------|
-| `supervisor:test-xxxxx` | 237 | `kubectl explain argocd.spec.version` | ArgoCD CRD is on Supervisor |
-| `terminal` | 238 | `cat argocd-instance.yaml` | |
-| `supervisor:test-xxxxx` | 239 | `kubectl apply -f argocd-instance.yaml` | |
-| `supervisor:test-xxxxx` | 240 | `kubectl get pod` | |
-| `supervisor:test-xxxxx` | 243 | `kubectl get pod` | |
-| `supervisor:test-xxxxx` | 244 | `kubectl get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' \| base64 -d` | |
-| `supervisor:test-xxxxx` | 245 | `kubectl get service` | get ArgoCD external IP |
+**Pg 237** · `[supervisor:test-xxxxx]`
+```
+kubectl explain argocd.spec.version
+```
+Verify ArgoCD CRD is available on the Supervisor
+
+**Pg 238** · `[terminal]`
+```
+cat argocd-instance.yaml
+```
+
+**Pg 239** · `[supervisor:test-xxxxx]`
+```
+kubectl apply -f argocd-instance.yaml
+```
+
+**Pg 240** · `[supervisor:test-xxxxx]`
+```
+kubectl get pod
+```
+
+**Pg 243** · `[supervisor:test-xxxxx]`
+```
+kubectl get pod
+```
+Wait until all ArgoCD pods are Running
+
+**Pg 244** · `[supervisor:test-xxxxx]`
+```
+kubectl get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d
+```
+Copy this password for ArgoCD login
+
+**Pg 245** · `[supervisor:test-xxxxx]`
+```
+kubectl get service
+```
+Note the ArgoCD external IP
 
 ### Log into ArgoCD CLI and register clusters
 
-```
-[supervisor:test-xxxxx] CMD: (Pg 246)  argocd login 10.1.11.x
-```
-> → **ESTABLISHES** ArgoCD CLI session (separate from VCF context)
+> ⮕ **ARGOCD SESSION** — Logging into ArgoCD CLI (separate from VCF context)
 
-| Context | Pg | Command | Notes |
-|---------|----|---------|-------|
-| `argocd` | 247 | `argocd account update-password` | |
-| `supervisor:test-xxxxx` | 248 | `vcf context list` | VCF context unchanged by argocd CLI |
-| `argocd` | 249 | `argocd cluster add supervisor --namespace test-xxxxx --namespace dev-xxxxx --kubeconfig ~/.kube/config` | registers Supervisor as ArgoCD destination |
-| `supervisor:test-xxxxx` | 250 | `kubectl get service` | get ArgoCD IP for web UI |
-| | 261 | *(copy git repo URL)* `http://10.1.10.130:3000/holuser/argocd.git` | |
+**Pg 246** · `[supervisor:test-xxxxx]`
+```
+argocd login 10.1.11.x
+```
+Use the IP from `kubectl get service` above. Username: `admin`, password from the secret above.
+
+> ⮕ **ARGOCD SESSION ACTIVE** — ArgoCD CLI commands now work alongside VCF context
+
+**Pg 247** · `[argocd]`
+```
+argocd account update-password
+```
+
+**Pg 248** · `[supervisor:test-xxxxx]`
+```
+vcf context list
+```
+VCF context is unchanged by ArgoCD CLI login
+
+**Pg 249** · `[argocd]`
+```
+argocd cluster add supervisor --namespace test-xxxxx --namespace dev-xxxxx --kubeconfig ~/.kube/config
+```
+Registers the Supervisor as an ArgoCD destination cluster
+
+**Pg 250** · `[supervisor:test-xxxxx]`
+```
+kubectl get service
+```
+Get ArgoCD IP for web UI access
+
+**Pg 261** — Copy the git repo URL for later use:
+```
+http://10.1.10.130:3000/holuser/argocd.git
+```
 
 ### Download vks-01 kubeconfig and register in ArgoCD
 
-| Context | Pg | Command | Notes |
-|---------|----|---------|-------|
-| `terminal` | 271 | `cd ~/Downloads` | |
-| `terminal` | 271 | `ls \|grep vks-01-kubeconfig.yaml` | |
-| `terminal` | 272 | `kubectl --kubeconfig vks-01-kubeconfig.yaml config current-context` | explicit kubeconfig — bypasses VCF context |
-| `argocd` | 273 | `argocd cluster add vks-01-admin@vks-01 vks-01 --kubeconfig vks-01-kubeconfig.yaml` | registers vks-01 guest cluster as ArgoCD destination |
+**Pg 271** · `[terminal]`
+```
+cd ~/Downloads
+```
+
+**Pg 271** · `[terminal]`
+```
+ls |grep vks-01-kubeconfig.yaml
+```
+
+**Pg 272** · `[terminal]`
+```
+kubectl --kubeconfig vks-01-kubeconfig.yaml config current-context
+```
+Explicit `--kubeconfig` bypasses VCF context
+
+**Pg 273** · `[argocd]`
+```
+argocd cluster add vks-01-admin@vks-01 vks-01 --kubeconfig vks-01-kubeconfig.yaml
+```
+Registers vks-01 guest cluster as an ArgoCD destination
 
 ### Deploy OpenCart via ArgoCD CLI
 
-| Context | Pg | Command | Notes |
-|---------|----|---------|-------|
-| `terminal` | 275 | `cd ~/Documents/Lab` | |
-| `argocd` | 276 | `argocd app create opencart-lb --file argo-opencart-lb.yaml` | |
-| `argocd` | 277 | `argocd app get opencart-lb` | |
-| `supervisor:test-xxxxx` | 278 | `kubectl get service` | get DB VM external IP (Supervisor namespace level) |
-| `terminal` | 279 | `kubectl get service -n opencart --kubeconfig ~/Downloads/vks-01-kubeconfig.yaml` | explicit kubeconfig — targets **inside** vks-01 guest cluster |
-| `argocd` | 284 | `argocd app create opencart-app --file argo-opencart-app.yaml` | |
-| `argocd` | 285 | `argocd app get opencart-app` | |
+**Pg 275** · `[terminal]`
+```
+cd ~/Documents/Lab
+```
+
+**Pg 276** · `[argocd]`
+```
+argocd app create opencart-lb --file argo-opencart-lb.yaml
+```
+
+**Pg 277** · `[argocd]`
+```
+argocd app get opencart-lb
+```
+
+**Pg 278** · `[supervisor:test-xxxxx]`
+```
+kubectl get service
+```
+Get the DB VM external IP (Supervisor namespace level)
+
+**Pg 279** · `[terminal]`
+```
+kubectl get service -n opencart --kubeconfig ~/Downloads/vks-01-kubeconfig.yaml
+```
+Explicit `--kubeconfig` targets inside the vks-01 guest cluster
+
+**Pg 284** · `[argocd]`
+```
+argocd app create opencart-app --file argo-opencart-app.yaml
+```
+
+**Pg 285** · `[argocd]`
+```
+argocd app get opencart-app
+```
