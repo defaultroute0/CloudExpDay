@@ -1,6 +1,6 @@
-# VCF Field Demo Lab Guide - Command Reference
+# Lab Guide - Command Reference
 
-This repo contains a processed reference extracted from the 295-page VMware VCF Field Demo Lab Guide hosted on Broadcom's Lab Platform.
+This repo contains commands only extracted from the xxxx Lab Guide.
 
 ## The Problem
 
