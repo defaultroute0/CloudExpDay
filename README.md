@@ -19,4 +19,4 @@ The lab also involves **five different context types** (VCFA CCI, vks-01, superv
 - **Page number references** back to the original lab guide for screenshots and GUI steps
 - **Verified against the raw HTML source** — every command was triple-checked against the original scraped lab guide
 
-This file is designed to sit alongside the original lab guide, not replace it. Use it to quickly find the next command, confirm you're in the right context, and understand where you are in the overall flow.
+This file is designed for instructors to sit alongside the original lab guide, not replace it. Use it to quickly find the next command, or commands which should of been used in which context, confirm you're in the right context, and understand where you are in the overall flow.
