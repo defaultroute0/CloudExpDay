@@ -15,6 +15,25 @@ Each command is prefixed with the **active VCF/kubectl context** the student mus
 
 ---
 
+## Index
+
+- [Module 2: Enabling VCF Cloud Services](#module-2-enabling-vcf-cloud-services)
+  - [Chapter 2: Managing Virtual Machines with VM Service](#chapter-2-managing-virtual-machines-with-vm-service)
+- [Module 4: Consuming VCF Cloud Services](#module-4-consuming-vcf-cloud-services)
+  - [Chapter 3: Uploading containers images to Harbor](#chapter-3-uploading-containers-images-to-harbor)
+  - [Chapter 4: Managing Kubernetes clusters with VKS](#chapter-4-managing-kubernetes-clusters-with-vsphere-kubernetes-service-vks)
+    - [Connect to dev namespace and register vks-01](#connect-to-dev-namespace-and-register-vks-01)
+    - [Create vks-01 context and switch to it](#create-vks-01-context-and-switch-to-it)
+    - [Install packages and deploy OpenCart on vks-01](#install-packages-and-deploy-opencart-on-vks-01)
+  - [Chapter 5: Enabling Continuous Delivery with Argo CD](#chapter-5-enabling-continuous-delivery-with-argo-cd)
+    - [Create supervisor context and switch to test namespace](#create-supervisor-context-and-switch-to-test-namespace)
+    - [Deploy ArgoCD instance](#deploy-argocd-instance)
+    - [Log into ArgoCD CLI and register clusters](#log-into-argocd-cli-and-register-clusters)
+    - [Download vks-01 kubeconfig and register in ArgoCD](#download-vks-01-kubeconfig-and-register-in-argocd)
+    - [Deploy OpenCart via ArgoCD CLI](#deploy-opencart-via-argocd-cli)
+
+---
+
 # Module 2: Enabling VCF Cloud Services
 
 ## Chapter 2: Managing Virtual Machines with VM Service
@@ -82,7 +101,7 @@ CMD: (Pg 185)  vcf context use
 ```
 CMD: (Pg 190)  vcf context create vks-01 --kubeconfig ~/.kube/config --kubecontext vcf-cli-vks-01-dev-xxxxx@vks-01-dev-xxxxx
 ```
-> → **CREATES** context: `vks-01` (K8S type — still in `vcfa:dev-xxxxx`)
+> → **CREATES** context: `vks-01` (lab guide says select **cloud-consumption-interface** context type — still in `vcfa:dev-xxxxx`)
 
 | Context | Pg | Command |
 |---------|----|---------|
