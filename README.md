@@ -10,13 +10,12 @@ The lab also involves **five different context types** (VCFA CCI, vks-01, superv
 
 ## The Solution
 
-**[commandsonly.md]** is a single-file reference that:
+**[commandsonly.md]** **[commandsandtasks.md]**are single-file references that:
 
 - **Prefixes every CLI command with the required context** — so you always know whether you need `vcfa:dev-xxxxx`, `vks-01`, `supervisor:test-xxxxx`, `terminal`, or an `argocd` CLI session before running a command
 - **Calls out every context transition** — `vcf context create`, `vcf context use`, and `argocd login` are highlighted with annotations showing exactly what changes
 - **Includes a lab overview** summarizing what each module and chapter does, which chapters have CLI commands, and the manual-then-GitOps deployment pattern
 - **Hyperlinked index** for quick navigation to any chapter or sub-section
 - **Page number references** back to the original lab guide for screenshots and GUI steps
-- **Verified against the raw HTML source** — every command was triple-checked against the original scraped lab guide
 
-This file is designed for instructors to sit alongside the original lab guide, not replace it. Use it to quickly find the next command, or commands which should of been used in which context, confirm you're in the right context, and understand where you are in the overall flow.
+This file is designed for instructors to sit alongside the original lab guide, not replace it. Use it to quickly find the next command, or commands which should of been used in which context for students, confirm you're in the right context, and understand where you are in the overall flow.
