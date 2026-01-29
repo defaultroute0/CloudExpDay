@@ -251,7 +251,7 @@ docker push harbor-01a.site-a.vcf.lab/opencart/opencart:4.0.1-1-debian-11-r66
 | 4 | Storage: `cluster-wld01-01a-storage-policy`, OS: `Photon` → Next |
 | 5 | Add Nodepool (keep defaults) → Next → Finish |
 | **6** | **⚠️ DOWNLOAD YAML** (click download arrow) — needed for ArgoCD! |
-| 7 | Finish → Wait for **Ready** status |
+| 7 | Finish → Wait for **Ready** status, can take 10mins |
 
 ### CLI: Configure CLI for vks-01 (Pg 184–193)
 
@@ -358,6 +358,7 @@ kubectl get service -n opencart -w
 # Pg 214-215 — Deploy app (after editing opencart.yaml with IPs)
 kubectl apply -f opencart.yaml -n opencart
 kubectl get all -n opencart
+# this can take 5 mins for readiness probes to settle
 ```
 
 ### GUI: VCFA — Scale vks-01 Nodepool (Pg 219–220)
@@ -419,7 +420,7 @@ vcf context use
 ```bash
 # Pg 239-240 — Deploy ArgoCD
 kubectl apply -f argocd-instance.yaml
-kubectl get pod
+kubectl get pod -w
 # → Pods may be Pending...
 ```
 
