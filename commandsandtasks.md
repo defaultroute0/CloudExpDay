@@ -15,8 +15,8 @@
 - [Module 4: Consuming VCF Cloud Services](#module-4-consuming-vcf-cloud-services)
   - [Chapter 2 — Deploy MySQL VM](#chapter-2--deploy-mysql-vm-pg-139154)
   - [Chapter 3 — Harbor](#chapter-3--harbor-pg-159164)
-  - [Chapter 4 — vks-01 Cluster - Manually](#chapter-4--vks-01-cluster-pg-169222)
-  - [Chapter 5 — ArgoCD Setup - Cluster Automated](#chapter-5--argocd-setup-pg-229292)
+  - [Chapter 4 — vks-01 Cluster](#chapter-4--vks-01-cluster-pg-169222)
+  - [Chapter 5 — ArgoCD Setup](#chapter-5--argocd-setup-pg-229292)
 - [Quick Reference](#quick-reference)
 
 ---
@@ -84,6 +84,8 @@
 | Zone | ✓ `z-wld-a` |
 
 → Wait for **Active** status. Note the unique namespace name (e.g., `dev-xxxxx`).
+
+> ⚠️ **WAIT** — The namespace needs time to fully initialize after showing Active. If you proceed to `vcf context create vcfa` too quickly, the dev-xxxxx sub-context will not be auto-discovered and you'll need to re-create the context.
 
 ### CLI: Set Up VCF CLI (Pg 48–51)
 
@@ -251,7 +253,9 @@ docker push harbor-01a.site-a.vcf.lab/opencart/opencart:4.0.1-1-debian-11-r66
 | 4 | Storage: `cluster-wld01-01a-storage-policy`, OS: `Photon` → Next |
 | 5 | Add Nodepool (keep defaults) → Next → Finish |
 | **6** | **⚠️ DOWNLOAD YAML** (click download arrow) — needed for ArgoCD! |
-| 7 | Finish → Wait for **Ready** status, can take 10mins |
+| 7 | Finish → Wait for **Ready** status |
+
+> ⚠️ **WAIT ~10 MINUTES** — vks-01 takes at least 10 minutes to fully deploy. Control Plane comes up first, but worker nodes take longer. Do not proceed with CLI configuration until status is **Ready** and both nodes are available.
 
 ### CLI: Configure CLI for vks-01 (Pg 184–193)
 
@@ -358,8 +362,9 @@ kubectl get service -n opencart -w
 # Pg 214-215 — Deploy app (after editing opencart.yaml with IPs)
 kubectl apply -f opencart.yaml -n opencart
 kubectl get all -n opencart
-# this can take 5 mins for readiness probes to settle
 ```
+
+> ⚠️ **WAIT ~5 MINUTES** — OpenCart takes around 5 minutes to become Ready due to its readiness probes. `kubectl get all -n opencart` will show pods not yet Ready during this time — this is normal.
 
 ### GUI: VCFA — Scale vks-01 Nodepool (Pg 219–220)
 
@@ -420,7 +425,7 @@ vcf context use
 ```bash
 # Pg 239-240 — Deploy ArgoCD
 kubectl apply -f argocd-instance.yaml
-kubectl get pod -w
+kubectl get pod
 # → Pods may be Pending...
 ```
 
@@ -502,9 +507,13 @@ argocd cluster add supervisor \
 
 → Wait for App Health: **Healthy**
 
+> ⚠️ **WAIT ~10 MINUTES** — ArgoCD is deploying vks-01 in `test-xxxxx` via GitOps. The cluster takes at least 10 minutes to provision. Wait for `opencart-infra` App Health to show **Healthy** before proceeding.
+
 ### GUI: VCFA — Download vks-01 Kubeconfig (Pg 270)
 
-> VCF Automation → Kubernetes → vks-01 → ⋮ → Download kubeconfig file
+> ⚠️ **IMPORTANT** — Download the kubeconfig from the **test-xxxxx** namespace (not dev-xxxxx). Both namespaces have a vks-01 cluster. You need the one ArgoCD just created in test.
+
+> VCF Automation → Kubernetes (test-xxxxx) → vks-01 → ⋮ → Download kubeconfig file
 
 ### CLI: Register vks-01 in ArgoCD (Pg 271–273)
 
