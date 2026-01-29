@@ -15,8 +15,8 @@
 - [Module 4: Consuming VCF Cloud Services](#module-4-consuming-vcf-cloud-services)
   - [Chapter 2 — Deploy MySQL VM](#chapter-2--deploy-mysql-vm-pg-139154)
   - [Chapter 3 — Harbor](#chapter-3--harbor-pg-159164)
-  - [Chapter 4 — vks-01 Cluster](#chapter-4--vks-01-cluster-pg-169222)
-  - [Chapter 5 — ArgoCD Setup](#chapter-5--argocd-setup-pg-229292)
+  - [Chapter 4 — vks-01 Cluster Manually](#chapter-4--vks-01-cluster-manually-pg-169222)
+  - [Chapter 5 — vks-01 Cluster Automated with ArgoCD](#chapter-5--vks-01-cluster-automated-with-argocd-pg-229292)
 - [Quick Reference](#quick-reference)
 
 ---
@@ -237,7 +237,7 @@ docker push harbor-01a.site-a.vcf.lab/opencart/opencart:4.0.1-1-debian-11-r66
 
 ---
 
-## Chapter 4 — vks-01 Cluster (Pg 169–222)
+## Chapter 4 — vks-01 Cluster Manually (Pg 169–222)
 
 **Goal:** Create VKS cluster, configure CLI, install packages, deploy OpenCart.
 
@@ -382,7 +382,7 @@ kubectl get nodes
 
 ---
 
-## Chapter 5 — ArgoCD Setup (Pg 229–292)
+## Chapter 5 — vks-01 Cluster Automated with ArgoCD (Pg 229–292)
 
 **Goal:** Create test namespace, deploy ArgoCD, set up GitOps workflow.
 
