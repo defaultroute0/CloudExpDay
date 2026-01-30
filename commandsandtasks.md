@@ -102,7 +102,7 @@ vcf context use
 # → Select: vcfa:dev-xxxxx:default-project
 ```
 
-**Now in: `vcfa:dev-xxxxx`**
+** ! Now in: `vcfa:dev-xxxxx`**
 
 ```bash
 # Pg 50-51 — Verify VMs
