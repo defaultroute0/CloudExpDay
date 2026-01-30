@@ -15,8 +15,8 @@
 - [Module 4: Consuming VCF Cloud Services](#module-4-consuming-vcf-cloud-services)
   - [Chapter 2 — Deploy MySQL VM](#chapter-2--deploy-mysql-vm-pg-139154)
   - [Chapter 3 — Harbor](#chapter-3--harbor-pg-159164)
-  - [Chapter 4 — vks-01 Cluster Manually in dev-xxxx namespace](#chapter-4--vks-01-cluster-manually-pg-169222)
-  - [Chapter 5 — vks-01 Cluster Automated with ArgoCD in test-xxxx namespace](#chapter-5--vks-01-cluster-automated-with-argocd-pg-229292)
+  - [Chapter 4 — vks-01 Cluster Manually](#chapter-4--vks-01-cluster-manually-pg-169222)
+  - [Chapter 5 — vks-01 Cluster Automated with ArgoCD](#chapter-5--vks-01-cluster-automated-with-argocd-pg-229292)
 - [Quick Reference](#quick-reference)
 
 ---
@@ -102,7 +102,8 @@ vcf context use
 # → Select: vcfa:dev-xxxxx:default-project
 ```
 
-** ! Now in: `vcfa:dev-xxxxx`**
+> [!WARNING]
+> **CONTEXT: `vcfa:dev-xxxxx`** — All commands below run against the dev namespace via VCFA.
 
 ```bash
 # Pg 50-51 — Verify VMs
@@ -220,7 +221,8 @@ kubectl get vmi
 
 ### CLI: Push Image to Harbor (Pg 160–164)
 
-**Context:** `terminal`
+> [!WARNING]
+> **CONTEXT: `terminal`** — No VCF context needed. Plain shell commands.
 
 ```bash
 # Pg 160 — Login to Harbor (admin / Harbor12345)
@@ -259,7 +261,8 @@ docker push harbor-01a.site-a.vcf.lab/opencart/opencart:4.0.1-1-debian-11-r66
 
 ### CLI: Configure CLI for vks-01 (Pg 184–193)
 
-**Context:** `vcfa:dev-xxxxx`
+> [!WARNING]
+> **CONTEXT: `vcfa:dev-xxxxx`** — Must be in the dev namespace CCI context.
 
 ```bash
 # Pg 184-185 — Confirm context
@@ -289,7 +292,8 @@ vcf context list
 vcf context use vks-01
 ```
 
-**Now in: `vks-01`**
+> [!WARNING]
+> **CONTEXT: `vks-01`** — All commands below run against the vks-01 guest cluster.
 
 ### CLI: Install Packages on vks-01 (Pg 194–204)
 
@@ -346,7 +350,8 @@ kubectl get pods -n tanzu-system-telegraf
 
 ### CLI: Deploy OpenCart on vks-01 (Pg 205–222)
 
-**Context:** `vks-01`
+> [!WARNING]
+> **CONTEXT: `vks-01`** — Must be in the vks-01 cluster CCI context.
 
 ```bash
 # Pg 205-206 — Create and label namespace
@@ -402,7 +407,8 @@ kubectl get nodes
 
 ### CLI: Create Supervisor Context (Pg 235–236)
 
-**Context:** Still in `vks-01`
+> [!WARNING]
+> **CONTEXT: `vks-01`** — Still in the vks-01 cluster. `create` below does NOT auto-switch.
 
 ```bash
 # Pg 235 — Create supervisor context (does NOT auto-switch!)
@@ -418,7 +424,8 @@ vcf context use
 # → Select: supervisor:test-xxxxx
 ```
 
-**Now in: `supervisor:test-xxxxx`**
+> [!WARNING]
+> **CONTEXT: `supervisor:test-xxxxx`** — All commands below run against the test namespace on Supervisor.
 
 ### CLI: Deploy ArgoCD Instance (Pg 237–245)
 
@@ -564,7 +571,8 @@ argocd app get opencart-lb
 kubectl get service
 ```
 
-> ⚠️ **WARNING** — Context must be `supervisor:test-xxxxx` for this command. If not, run `vcf context use` and select it.
+> [!WARNING]
+> **CONTEXT: `supervisor:test-xxxxx`** — You must be in the test namespace for this command. If not, run `vcf context use` and select `supervisor:test-xxxxx`.
 
 ```bash
 # Pg 279 — Get OpenCart LB External IP (from inside vks-01)
