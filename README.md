@@ -6,7 +6,7 @@ This repo contains commands only extracted from the xxxx Lab Guide.
 
 The lab guide is a long, screenshot-heavy document where CLI commands are buried across dozens of pages. Students frequently lose track of **which VCF/kubectl context** they should be in when running each command. A wrong context means commands silently target the wrong namespace or cluster, producing confusing errors or deploying resources in the wrong place.
 
-The lab also involves **five different context types** (VCFA CCI, vks-01, supervisor, terminal, ArgoCD CLI) with transitions scattered across chapters. There is no single place in the original guide that maps out this context flow.
+The lab also involves **multiple  context types** (based on VCFA/CCI, K8S, and direct k8s using kubeconfig file without switch current context, i.e 'vks-01') supervisor, terminal, ArgoCD CLI) with transitions scattered across chapters. There is no single place in the original guide that maps out this context flow.
 
 ## The Solution
 
