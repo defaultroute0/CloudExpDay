@@ -572,8 +572,8 @@ kubectl get service -n opencart --kubeconfig ~/Downloads/vks-01-kubeconfig.yaml
 ```
 
 → You now have two IPs:
-- **MySQL LB IP** — from `kubectl get service` (the oc-mysql load balancer)
-- **OpenCart LB IP** — from the `--kubeconfig` command (the opencart service)
+- **MySQL LB IP** — from `kubectl get service` (the oc-mysql load balancer in test-xxxxx)
+- **OpenCart LB IP** — from `kubectl get service -n opencart --kubeconfig ~/Downloads/vks-01-kubeconfig.yaml` (the opencart LB inside vks-01)
 
 #### Step 4: Edit opencart.yaml in Gitea (Pg 280–282)
 
