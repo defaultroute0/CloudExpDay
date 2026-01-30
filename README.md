@@ -10,7 +10,7 @@ The lab also involves **five different context types** (VCFA CCI, vks-01, superv
 
 ## The Solution
 
-**[commandsonly.md]** **[commandsandtasks.md]**are single-file references that:
+This Instructor Guide is a single file reference that:
 
 - **Prefixes every CLI command with the required context** — so you always know whether you need `vcfa:dev-xxxxx`, `vks-01`, `supervisor:test-xxxxx`, `terminal`, or an `argocd` CLI session before running a command
 - **Calls out every context transition** — `vcf context create`, `vcf context use`, and `argocd login` are highlighted with annotations showing exactly what changes
