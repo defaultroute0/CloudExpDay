@@ -222,7 +222,7 @@ kubectl get vmi
 ### CLI: Push Image to Harbor (Pg 160–164)
 
 > [!WARNING]
-> **CONTEXT: `terminal`** — No VCF context needed. Plain shell commands.
+> **CONTEXT: `terminal`** — No VCF context needed. Doesn't matter which context you're currently in, just stay there.
 
 ```bash
 # Pg 160 — Login to Harbor (admin / Harbor12345)
