@@ -528,61 +528,114 @@ kubectl --kubeconfig vks-01-kubeconfig.yaml config current-context
 # Pg 273 — Register vks-01 with ArgoCD
 argocd cluster add vks-01-admin@vks-01 vks-01 \
   --kubeconfig vks-01-kubeconfig.yaml
-# → Note the cluster IP
+# → Note the cluster IP — needed for YAML verification below
 ```
 
-### GUI: Verify & Edit ArgoCD YAML Files (Pg 274, 283)
+### Deploy OpenCart via ArgoCD (Pg 274–289)
 
-> Open `argo-opencart-lb.yaml` and `argo-opencart-app.yaml` in VS Code
+This section follows the exact lab page order — check LB yaml, create LB app, get IPs, edit opencart.yaml in Gitea, check app yaml, create app, verify.
+
+#### Step 1: Verify argo-opencart-lb.yaml (Pg 274)
+
+> Open `argo-opencart-lb.yaml` in VS Code (in `~/Documents/Lab`)
 
 | Check | Action |
 |-------|--------|
-| Server IP | Must match vks-01 cluster IP from previous step |
-| If different | Update and Save |
+| Server IP | Must match vks-01 cluster IP from Pg 273 |
+| If different | Update the IP and **Save** |
 
-### GUI: Edit opencart.yaml in Gitea (Pg 280–282)
-
-> Gitea → argocd → opencart-app → opencart.yaml → Edit
-
-| Field | Replace with |
-|-------|--------------|
-| `OPENCART_DATABASE_HOST` | MySQL LB External IP |
-| `OPENCART_HOST` | OpenCart LB External IP (from `kubectl get service -n opencart --kubeconfig ~/Downloads/vks-01-kubeconfig.yaml`) |
-| `livenessProbe.httpHeaders` | OpenCart LB External IP |
-| `readinessProbe.httpHeaders` | OpenCart LB External IP |
-
-→ Commit Changes
-
-### CLI: Deploy OpenCart via ArgoCD (Pg 275–285)
+#### Step 2: Create opencart-lb App (Pg 275–277)
 
 ```bash
 # Pg 275 — Go to Lab directory
 cd ~/Documents/Lab
 
-# Pg 276-277 — Create LB app
+# Pg 276 — Create LB app
 argocd app create opencart-lb --file argo-opencart-lb.yaml
+
+# Pg 277 — Check status
 argocd app get opencart-lb
+```
 
-# Pg 278 — Get DB VM external IP
+#### Step 3: Get the Two IPs You Need (Pg 278–279)
+
+```bash
+# Pg 278 — Get DB VM External IP (MySQL LB)
 kubectl get service
+```
 
-# Pg 279 — Get OpenCart LB IP from inside vks-01
+> ⚠️ **WARNING** — Context must be `supervisor:test-xxxxx` for this command. If not, run `vcf context use` and select it.
+
+```bash
+# Pg 279 — Get OpenCart LB External IP (from inside vks-01)
 kubectl get service -n opencart --kubeconfig ~/Downloads/vks-01-kubeconfig.yaml
+```
 
-# Pg 284-285 — Create app (after editing opencart.yaml in Gitea)
+→ You now have two IPs:
+- **MySQL LB IP** — from `kubectl get service` (the oc-mysql load balancer)
+- **OpenCart LB IP** — from the `--kubeconfig` command (the opencart service)
+
+#### Step 4: Edit opencart.yaml in Gitea (Pg 280–282)
+
+> Gitea → argocd repo → `opencart-app` folder → `opencart.yaml` → **Edit**
+
+| # | Field to find | Replace with |
+|---|---------------|--------------|
+| 1 | `OPENCART_DATABASE_HOST` | **MySQL LB IP** (from Pg 278) |
+| 2 | `OPENCART_HOST` | **OpenCart LB IP** (from Pg 279) |
+| 3 | `livenessProbe` → `httpHeaders` value | **OpenCart LB IP** |
+| 4 | `readinessProbe` → `httpHeaders` value | **OpenCart LB IP** |
+
+> ⚠️ **WARNING** — All **4** IPs must be changed to correct values, otherwise the application will not work.
+
+→ Scroll down → Add commit message → **Commit Changes**
+
+#### Step 5: Verify argo-opencart-app.yaml (Pg 283)
+
+> Open `argo-opencart-app.yaml` in VS Code (in `~/Documents/Lab`)
+
+| Check | Action |
+|-------|--------|
+| Server IP | Must match vks-01 cluster IP from Pg 273 |
+| If different | Update the IP and **Save** |
+
+#### Step 6: Create opencart-app & Verify (Pg 284–289)
+
+```bash
+# Pg 284 — Create app (from ~/Documents/Lab)
 argocd app create opencart-app --file argo-opencart-app.yaml
+
+# Pg 285 — Check status
 argocd app get opencart-app
 ```
 
-### GUI: GitOps Demo — Scale via Git (Pg 290)
+**GUI verification (Pg 286–289):**
 
-> Gitea → argocd → opencart-infra → vks-01.yaml → Edit
+| Pg | Action |
+|----|--------|
+| 286 | Return to ArgoCD UI → Verify all **3** applications are **Healthy** |
+| 287 | Click into `opencart-lb` |
+| 288 | Click on `my-open-cart-lb` service → note the External IP |
+| 289 | Browse to that IP → verify OpenCart application is available |
+
+### GUI: GitOps Demo — Scale via Git (Pg 290–292)
+
+> Gitea → argocd → opencart-infra → `vks-01.yaml` → Edit
 
 | Change | Value |
 |--------|-------|
 | Worker node replicas | `2` |
 
-→ Commit Changes → Watch ArgoCD sync automatically
+→ Commit Changes
+
+**Verify in ArgoCD (Pg 291–292):**
+
+| Step | Action |
+|------|--------|
+| 1 | Return to ArgoCD UI → Click `opencart-infra` |
+| 2 | App Health changes to **Progressing** (hit Refresh if needed) |
+| 3 | Click **Details** → **Events** to see what triggered the sync |
+| 4 | Wait for **Healthy** — new node visible in VCF Automation and vSphere under test namespace |
 
 ---
 
@@ -606,7 +659,10 @@ argocd app get opencart-app
 | 180 | Download vks-01.yaml |
 | 242 | Test namespace CPU: **25 GHz** |
 | 254-257 | Remove `namespace:` lines from YAMLs |
-| 211-213, 280-282 | Edit opencart.yaml with correct IPs (done twice) |
+| 211-213 | Edit `opencart.yaml` with correct IPs (manual deploy — VS Code) |
+| 274, 283 | Verify Server IP in `argo-opencart-lb.yaml` and `argo-opencart-app.yaml` |
+| 278 | Context must be `test-xxxxx` when getting DB VM IP |
+| 280-282 | Edit `opencart.yaml` with correct IPs (ArgoCD deploy — Gitea) |
 
 ### Credentials
 
