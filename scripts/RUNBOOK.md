@@ -5,7 +5,7 @@ Chronological list of all steps to fast-track the lab. Steps marked `[SCRIPT]` a
 ## Before You Start
 
 ```bash
-cd ~/Documents/Lab/vksdemo-main/vksexpdaylab/prepbaselab
+cd ~/Documents/Lab/CloudExpDay/scripts
 ```
 
 ---
