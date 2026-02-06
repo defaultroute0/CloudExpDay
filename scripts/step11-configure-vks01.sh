@@ -4,6 +4,10 @@ set -e
 # Step 11: Configure vks-01 and Deploy OpenCart
 # Prerequisites: DEV_NS is set, vks-01 is Ready, MYSQL_LB_IP is set
 
+# Auto-detect script directory and lab files location
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LAB_DIR="${LAB_DIR:-$(dirname "$SCRIPT_DIR")}"
+
 if [ -z "$DEV_NS" ]; then
   echo "ERROR: Set DEV_NS first — export DEV_NS=dev-XXXXX"
   exit 1
@@ -18,9 +22,10 @@ fi
 echo "=== Step 11: Configure vks-01 and Deploy OpenCart ==="
 echo "Namespace: $DEV_NS"
 echo "MySQL LB IP: $MYSQL_LB_IP"
+echo "Lab directory: $LAB_DIR"
 echo ""
 
-cd ~/Documents/Lab
+cd "$LAB_DIR"
 
 # Ensure we're in the right context
 vcf context use vcfa:$DEV_NS:default-project

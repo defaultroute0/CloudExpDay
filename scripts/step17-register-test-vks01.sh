@@ -2,17 +2,31 @@
 set -e
 
 # Step 17: Register test vks-01 in ArgoCD
-# Prerequisites: ARGOCD_IP is set, test vks-01 kubeconfig downloaded to ~/Downloads/vks-01-kubeconfig.yaml
+# Prerequisites: ARGOCD_IP is set, test vks-01 kubeconfig downloaded
+
+# Auto-detect script directory and lab files location
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LAB_DIR="${LAB_DIR:-$(dirname "$SCRIPT_DIR")}"
 
 if [ -z "$ARGOCD_IP" ]; then
   echo "ERROR: Set ARGOCD_IP first — export ARGOCD_IP=10.1.11.X"
   exit 1
 fi
 
-KUBECONFIG_FILE="${VKS01_KUBECONFIG:-$HOME/Downloads/vks-01-kubeconfig.yaml}"
-
-if [ ! -f "$KUBECONFIG_FILE" ]; then
-  echo "ERROR: Kubeconfig not found at $KUBECONFIG_FILE"
+# Look for kubeconfig in multiple locations
+if [ -n "$VKS01_KUBECONFIG" ] && [ -f "$VKS01_KUBECONFIG" ]; then
+  KUBECONFIG_FILE="$VKS01_KUBECONFIG"
+elif [ -f "$HOME/Downloads/vks-01-kubeconfig.yaml" ]; then
+  KUBECONFIG_FILE="$HOME/Downloads/vks-01-kubeconfig.yaml"
+elif [ -f "$LAB_DIR/vks-01-kubeconfig.yaml" ]; then
+  KUBECONFIG_FILE="$LAB_DIR/vks-01-kubeconfig.yaml"
+else
+  echo "ERROR: Kubeconfig not found"
+  echo ""
+  echo "Looked in:"
+  echo "  - \$VKS01_KUBECONFIG (if set)"
+  echo "  - ~/Downloads/vks-01-kubeconfig.yaml"
+  echo "  - $LAB_DIR/vks-01-kubeconfig.yaml"
   echo ""
   echo "Download it from VCFA:"
   echo "  Build & Deploy → test-XXXXX → Kubernetes → vks-01 → Download Kubeconfig"
@@ -27,7 +41,7 @@ echo "ArgoCD IP: $ARGOCD_IP"
 echo "Kubeconfig: $KUBECONFIG_FILE"
 echo ""
 
-cd ~/Downloads
+cd "$LAB_DIR"
 
 # Login to ArgoCD
 echo ">>> Logging into ArgoCD..."

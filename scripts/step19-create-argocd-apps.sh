@@ -4,6 +4,10 @@ set -e
 # Step 19: Create ArgoCD Applications
 # Prerequisites: ARGOCD_IP is set, manifests uploaded to Gitea, opencart.yaml updated with IPs
 
+# Auto-detect script directory and lab files location
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LAB_DIR="${LAB_DIR:-$(dirname "$SCRIPT_DIR")}"
+
 if [ -z "$ARGOCD_IP" ]; then
   echo "ERROR: Set ARGOCD_IP first — export ARGOCD_IP=10.1.11.X"
   exit 1
@@ -11,9 +15,10 @@ fi
 
 echo "=== Step 19: Create ArgoCD Applications ==="
 echo "ArgoCD IP: $ARGOCD_IP"
+echo "Lab directory: $LAB_DIR"
 echo ""
 
-cd ~/Documents/Lab
+cd "$LAB_DIR"
 
 # Login to ArgoCD
 echo ">>> Logging into ArgoCD..."

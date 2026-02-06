@@ -4,6 +4,10 @@ set -e
 # Step 14: Deploy ArgoCD
 # Prerequisites: TEST_NS is set
 
+# Auto-detect script directory and lab files location
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LAB_DIR="${LAB_DIR:-$(dirname "$SCRIPT_DIR")}"
+
 if [ -z "$TEST_NS" ]; then
   echo "ERROR: Set TEST_NS first — export TEST_NS=test-XXXXX"
   exit 1
@@ -11,9 +15,10 @@ fi
 
 echo "=== Step 14: Deploy ArgoCD ==="
 echo "Namespace: $TEST_NS"
+echo "Lab directory: $LAB_DIR"
 echo ""
 
-cd ~/Documents/Lab
+cd "$LAB_DIR"
 
 # Create supervisor context
 echo ">>> Creating supervisor context..."
