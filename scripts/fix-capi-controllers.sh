@@ -16,6 +16,7 @@
 
 TKG_NAMESPACE="svc-tkg-domain-c10"
 SUP_PASSWORD='rAV&C[D=z|9>?iNC'
+SUP_CP_VMS="10.1.1.86 10.1.1.87 10.1.1.88"
 
 RESTART_CMDS="kubectl rollout restart deployment vmware-system-tkg-webhook -n ${TKG_NAMESPACE} && \
 kubectl rollout restart deployment runtime-extension-controller-manager -n ${TKG_NAMESPACE} && \
@@ -72,30 +73,7 @@ if ! command -v sshpass &>/dev/null; then
   echo ""
 fi
 
-echo ">>> Discovering Supervisor CP VM IPs..."
-
-# Get internal node IPs from the Supervisor (this uses the API, not SSH)
-NODE_IPS=$(kubectl get nodes -o jsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}' 2>/dev/null || true)
-
-if [ -z "$NODE_IPS" ]; then
-  echo "  Could not get node IPs from kubectl. Trying vCenter to find CP VM IPs..."
-  echo ""
-  echo "  Look in vCenter: Hosts and Clusters → find SupervisorControlPlaneVM VMs"
-  echo "  Note any of their IP addresses and run:"
-  echo "    SUP_CP_IP=<ip> SUP_PASSWORD='${SUP_PASSWORD}' $0"
-  echo ""
-  # Allow override via env var
-  if [ -z "$SUP_CP_IP" ]; then
-    read -p "  Or enter a Supervisor CP VM IP now: " SUP_CP_IP
-    if [ -z "$SUP_CP_IP" ]; then
-      echo "ERROR: No CP VM IP provided."
-      exit 1
-    fi
-  fi
-  NODE_IPS="$SUP_CP_IP"
-fi
-
-echo "  Found node IPs: ${NODE_IPS}"
+echo ">>> Supervisor CP VM IPs: ${SUP_CP_VMS}"
 echo ""
 
 export SSHPASS="${SUP_PASSWORD}"
@@ -103,7 +81,7 @@ SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o PubkeyA
 
 # Try each node IP until one accepts SSH
 CONNECTED=""
-for IP in ${NODE_IPS}; do
+for IP in ${SUP_CP_VMS}; do
   echo ">>> Trying SSH to ${IP}..."
   if sshpass -e ssh ${SSH_OPTS} root@"${IP}" "echo ok" 2>/dev/null; then
     CONNECTED="${IP}"
