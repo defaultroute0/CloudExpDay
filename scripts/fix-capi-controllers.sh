@@ -6,14 +6,21 @@ set -e
 #   "admission webhook capi.mutating.tanzukubernetescluster.run.tanzu.vmware.com denied the request"
 #   "variable is not defined" for kubernetes, vmClass, storageClass
 #
-# This SSHes into vCenter → gets the Supervisor CP VM password → SSHes into the
-# Supervisor CP VM → restarts the CAPI controllers to clear stale certs/cache.
+# This SSHes into the Supervisor CP VM and restarts the CAPI controllers
+# to clear stale certs/cache.
+#
+# Usage:
+#   ./fix-capi-controllers.sh                    # prompts for Supervisor CP password
+#   SUP_PASSWORD='xyz' ./fix-capi-controllers.sh # skips prompt
+#
+# To get the Supervisor CP password:
+#   ssh root@vc-wld01-a.vcf.lab  (password: VMware123!VMware123!)
+#   Type: shell
+#   Run:  /usr/lib/vmware-wcp/decryptK8Pwd.py
+#   Copy the PWD value
 #
 # See: KB 392756, KB 423284, KB 424003
 
-VCENTER_HOST="vc-wld01-a.vcf.lab"
-VCENTER_USER="root"
-VCENTER_PASS="VMware123!VMware123!"
 SUPERVISOR_IP="10.1.0.6"
 TKG_NAMESPACE="svc-tkg-domain-c10"
 
@@ -25,61 +32,72 @@ echo ""
 
 # Check for sshpass
 if ! command -v sshpass &> /dev/null; then
-  echo "sshpass not found — falling through to manual instructions."
+  echo "sshpass not found. Install it first:"
+  echo "  sudo apt install -y sshpass"
+  echo ""
+  echo "Or run the commands manually (see below)."
   echo ""
   echo "=== Manual Steps ==="
   echo ""
-  echo "1. SSH into vCenter:"
-  echo "   ssh root@${VCENTER_HOST}"
-  echo "   Password: ${VCENTER_PASS}"
-  echo "   Type 'shell' if you get the VCSA prompt"
+  echo "1. Get the Supervisor CP VM password from vCenter:"
+  echo "   ssh root@vc-wld01-a.vcf.lab"
+  echo "   Password: VMware123!VMware123!"
+  echo "   Type: shell"
+  echo "   Run:  /usr/lib/vmware-wcp/decryptK8Pwd.py"
+  echo "   Note the PWD value"
   echo ""
-  echo "2. Get the Supervisor CP VM password:"
-  echo "   /usr/lib/vmware-wcp/decryptK8Pwd.py"
-  echo "   → Note the PWD value"
-  echo ""
-  echo "3. SSH into the Supervisor CP VM:"
+  echo "2. SSH into the Supervisor CP VM:"
   echo "   ssh root@${SUPERVISOR_IP}"
-  echo "   → Use the PWD from step 2"
+  echo "   Use the PWD from step 1"
   echo ""
-  echo "4. Restart the controllers:"
+  echo "3. Run these commands:"
   echo "   kubectl rollout restart deployment vmware-system-tkg-webhook -n ${TKG_NAMESPACE}"
   echo "   kubectl rollout restart deployment runtime-extension-controller-manager -n ${TKG_NAMESPACE}"
   echo "   kubectl rollout restart deployment capi-controller-manager -n ${TKG_NAMESPACE}"
-  echo ""
-  echo "5. Verify:"
   echo "   kubectl get deployments -n ${TKG_NAMESPACE}"
-  echo "   kubectl describe clusterclass builtin-generic-v3.4.0 -n vmware-system-vks-public | grep VariablesReconciled"
+  exit 1
+fi
+
+# Get the Supervisor CP VM password
+if [ -z "$SUP_PASSWORD" ]; then
+  echo "You need the Supervisor CP VM root password."
+  echo "To get it, SSH into vCenter in another terminal:"
   echo ""
-  echo "To install sshpass and run this script automatically:"
-  echo "  sudo apt install -y sshpass   # Debian/Ubuntu"
-  echo "  brew install sshpass          # macOS"
+  echo "  ssh root@vc-wld01-a.vcf.lab"
+  echo "  Password: VMware123!VMware123!"
+  echo "  Type: shell"
+  echo "  Run:  /usr/lib/vmware-wcp/decryptK8Pwd.py"
+  echo "  Copy the PWD value"
+  echo ""
+  read -s -p "Paste the Supervisor CP VM password here: " SUP_PASSWORD
+  echo ""
+  echo ""
+fi
+
+if [ -z "$SUP_PASSWORD" ]; then
+  echo "ERROR: No password provided."
   exit 1
 fi
 
 SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR"
 
-# Step 1: Get Supervisor CP VM password from vCenter
-echo ">>> Retrieving Supervisor CP VM password from vCenter..."
-SUP_PASSWORD=$(sshpass -p "${VCENTER_PASS}" ssh ${SSH_OPTS} ${VCENTER_USER}@${VCENTER_HOST} \
-  "shell.set --enabled true 2>/dev/null; /usr/lib/vmware-wcp/decryptK8Pwd.py" 2>/dev/null \
-  | grep "^PWD:" | head -1 | awk '{print $2}')
-
-if [ -z "$SUP_PASSWORD" ]; then
-  echo "ERROR: Could not retrieve Supervisor CP password."
-  echo "Try manually: ssh root@${VCENTER_HOST} then run /usr/lib/vmware-wcp/decryptK8Pwd.py"
+# Test SSH connectivity first
+echo ">>> Testing SSH to Supervisor CP VM at ${SUPERVISOR_IP}..."
+if ! sshpass -p "${SUP_PASSWORD}" ssh ${SSH_OPTS} root@${SUPERVISOR_IP} "echo ok" 2>/dev/null; then
+  echo "ERROR: Cannot SSH into ${SUPERVISOR_IP}. Check the password."
+  echo "Re-run /usr/lib/vmware-wcp/decryptK8Pwd.py on vCenter to get a fresh password."
   exit 1
 fi
-
-echo "  Got password (${#SUP_PASSWORD} chars)"
+echo "  Connected."
 echo ""
 
-# Step 2: Restart controllers on the Supervisor CP VM
-echo ">>> SSHing into Supervisor CP VM at ${SUPERVISOR_IP}..."
+# Restart controllers on the Supervisor CP VM
 echo ">>> Restarting CAPI controllers in ${TKG_NAMESPACE}..."
 echo ""
 
 sshpass -p "${SUP_PASSWORD}" ssh ${SSH_OPTS} root@${SUPERVISOR_IP} bash -s <<REMOTE
+set -e
+
 echo "--- Restarting vmware-system-tkg-webhook ---"
 kubectl rollout restart deployment vmware-system-tkg-webhook -n ${TKG_NAMESPACE}
 
