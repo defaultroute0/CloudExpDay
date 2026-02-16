@@ -35,14 +35,25 @@ SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLeve
 
 # Test SSH connectivity
 echo ">>> Connecting to Supervisor CP VM at ${SUPERVISOR_IP}..."
-if ! sshpass -e ssh ${SSH_OPTS} root@${SUPERVISOR_IP} "echo ok" 2>/dev/null; then
+SSH_OUTPUT=$(sshpass -e ssh ${SSH_OPTS} root@${SUPERVISOR_IP} "echo ok" 2>&1) || {
   echo "ERROR: Cannot SSH into ${SUPERVISOR_IP}."
-  echo "The Supervisor CP password may have changed. Retrieve it from vCenter:"
+  echo ""
+  echo "SSH output:"
+  echo "$SSH_OUTPUT"
+  echo ""
+  echo "sshpass exit code meanings:"
+  echo "  1 = Invalid arguments"
+  echo "  2 = Conflicting arguments"
+  echo "  3 = General runtime error"
+  echo "  5 = Invalid/incorrect password"
+  echo "  6 = Host public key is unknown (shouldn't happen with our SSH_OPTS)"
+  echo ""
+  echo "If password is wrong, retrieve from vCenter:"
   echo "  ssh root@vc-wld01-a.vcf.lab   (password: VMware123!VMware123!)"
   echo "  Type: shell"
   echo "  Run:  /usr/lib/vmware-wcp/decryptK8Pwd.py"
   exit 1
-fi
+}
 echo "  Connected."
 echo ""
 
