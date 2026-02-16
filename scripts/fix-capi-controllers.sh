@@ -6,21 +6,14 @@ set -e
 #   "admission webhook capi.mutating.tanzukubernetescluster.run.tanzu.vmware.com denied the request"
 #   "variable is not defined" for kubernetes, vmClass, storageClass
 #
-# This SSHes into the Supervisor CP VM and restarts the CAPI controllers
-# to clear stale certs/cache.
-#
-# Usage:
-#   ./fix-capi-controllers.sh                    # prompts for Supervisor CP password
-#   SUP_PASSWORD='xyz' ./fix-capi-controllers.sh # skips prompt
-#
-# To get the Supervisor CP password:
-#   ssh root@vc-wld01-a.vcf.lab  (password: VMware123!VMware123!)
-#   Type: shell
-#   Run:  /usr/lib/vmware-wcp/decryptK8Pwd.py
-#   Copy the PWD value
+# Fully automated: SSHes into vCenter (handles appliancesh via expect),
+# retrieves the Supervisor CP VM password, SSHes into the CP VM,
+# and restarts the CAPI controllers.
 #
 # See: KB 392756, KB 423284, KB 424003
 
+VCENTER_HOST="vc-wld01-a.vcf.lab"
+VCENTER_PASS='VMware123!VMware123!'
 SUPERVISOR_IP="10.1.0.6"
 TKG_NAMESPACE="svc-tkg-domain-c10"
 
@@ -30,41 +23,75 @@ echo "This fixes the 'variable is not defined' CAPI webhook error that occurs"
 echo "after uploading a new VKS version (e.g., 3.4.0) to the Supervisor."
 echo ""
 
-# Check for sshpass
-if ! command -v sshpass &> /dev/null; then
-  echo "sshpass not found. Install it first:"
-  echo "  sudo apt install -y sshpass"
+# Install dependencies if needed
+MISSING=""
+command -v sshpass &>/dev/null || MISSING="sshpass $MISSING"
+command -v expect &>/dev/null || MISSING="expect $MISSING"
+
+if [ -n "$MISSING" ]; then
+  echo ">>> Installing missing dependencies: ${MISSING}..."
+  sudo apt install -y $MISSING
   echo ""
-  echo "Or run the commands manually (see below)."
-  echo ""
-  echo "=== Manual Steps ==="
-  echo ""
-  echo "1. Get the Supervisor CP VM password from vCenter:"
-  echo "   ssh root@vc-wld01-a.vcf.lab"
-  echo "   Password: VMware123!VMware123!"
-  echo "   Type: shell"
-  echo "   Run:  /usr/lib/vmware-wcp/decryptK8Pwd.py"
-  echo "   Note the PWD value"
-  echo ""
-  echo "2. SSH into the Supervisor CP VM:"
-  echo "   ssh root@${SUPERVISOR_IP}"
-  echo "   Use the PWD from step 1"
-  echo ""
-  echo "3. Run these commands:"
-  echo "   kubectl rollout restart deployment vmware-system-tkg-webhook -n ${TKG_NAMESPACE}"
-  echo "   kubectl rollout restart deployment runtime-extension-controller-manager -n ${TKG_NAMESPACE}"
-  echo "   kubectl rollout restart deployment capi-controller-manager -n ${TKG_NAMESPACE}"
-  echo "   kubectl get deployments -n ${TKG_NAMESPACE}"
-  exit 1
 fi
 
-# Get the Supervisor CP VM password
+# Step 1: Get Supervisor CP VM password from vCenter
+# The VCSA uses appliancesh as the default login shell for root.
+# Non-interactive SSH commands don't reach bash. We use expect to:
+#   1. SSH in and land at the appliancesh "Command>" prompt
+#   2. Type "shell" to drop into bash
+#   3. Run decryptK8Pwd.py and capture the output
+echo ">>> Retrieving Supervisor CP VM password from vCenter..."
+
+DECRYPT_OUTPUT=$(expect 2>/dev/null <<'EXPECT_BLOCK'
+set timeout 30
+log_user 0
+
+spawn sshpass -p {VMware123!VMware123!} ssh \
+  -o StrictHostKeyChecking=no \
+  -o UserKnownHostsFile=/dev/null \
+  -o LogLevel=ERROR \
+  root@vc-wld01-a.vcf.lab
+
+# VCSA may drop us into appliancesh ("Command>") or bash ("#")
+expect {
+  "Command>" {
+    send "shell\r"
+    expect "$ " {} "#" {}
+  }
+  "# " {}
+  "$ " {}
+}
+
+# Disable terminal escape codes that would pollute our output
+send "export TERM=dumb\r"
+expect "# " {} "$ " {}
+
+# Run the decrypt script — turn log_user ON so output is captured in stdout
+log_user 1
+send "/usr/lib/vmware-wcp/decryptK8Pwd.py\r"
+expect "# " {} "$ " {}
+log_user 0
+
+# Clean exit: bash → appliancesh → disconnect
+send "exit\r"
+send "exit\r"
+expect eof
+EXPECT_BLOCK
+) || true
+
+# Parse the password from decryptK8Pwd.py output
+# Output format:  PWD: <password>
+# Strip ANSI escapes, find PWD line, extract value
+SUP_PASSWORD=$(echo "$DECRYPT_OUTPUT" | sed 's/\x1b\[[0-9;]*m//g' | grep "PWD:" | head -1 | sed 's/.*PWD: *//' | tr -d '[:space:]')
+
 if [ -z "$SUP_PASSWORD" ]; then
-  echo "You need the Supervisor CP VM root password."
-  echo "To get it, SSH into vCenter in another terminal:"
+  echo "WARNING: Could not retrieve password automatically."
   echo ""
-  echo "  ssh root@vc-wld01-a.vcf.lab"
-  echo "  Password: VMware123!VMware123!"
+  echo "Debug output:"
+  echo "$DECRYPT_OUTPUT" | head -20
+  echo ""
+  echo "Get it manually in another terminal:"
+  echo "  ssh root@${VCENTER_HOST}   (password: ${VCENTER_PASS})"
   echo "  Type: shell"
   echo "  Run:  /usr/lib/vmware-wcp/decryptK8Pwd.py"
   echo "  Copy the PWD value"
@@ -72,26 +99,28 @@ if [ -z "$SUP_PASSWORD" ]; then
   read -s -p "Paste the Supervisor CP VM password here: " SUP_PASSWORD
   echo ""
   echo ""
+  if [ -z "$SUP_PASSWORD" ]; then
+    echo "ERROR: No password provided."
+    exit 1
+  fi
 fi
 
-if [ -z "$SUP_PASSWORD" ]; then
-  echo "ERROR: No password provided."
-  exit 1
-fi
+echo "  Got password (${#SUP_PASSWORD} chars)"
+echo ""
 
 SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR"
 
-# Test SSH connectivity first
+# Step 2: Test SSH to Supervisor CP VM
 echo ">>> Testing SSH to Supervisor CP VM at ${SUPERVISOR_IP}..."
 if ! sshpass -p "${SUP_PASSWORD}" ssh ${SSH_OPTS} root@${SUPERVISOR_IP} "echo ok" 2>/dev/null; then
-  echo "ERROR: Cannot SSH into ${SUPERVISOR_IP}. Check the password."
-  echo "Re-run /usr/lib/vmware-wcp/decryptK8Pwd.py on vCenter to get a fresh password."
+  echo "ERROR: Cannot SSH into ${SUPERVISOR_IP}. Password may be wrong."
+  echo "Re-run /usr/lib/vmware-wcp/decryptK8Pwd.py on vCenter to verify."
   exit 1
 fi
 echo "  Connected."
 echo ""
 
-# Restart controllers on the Supervisor CP VM
+# Step 3: Restart controllers on the Supervisor CP VM
 echo ">>> Restarting CAPI controllers in ${TKG_NAMESPACE}..."
 echo ""
 
