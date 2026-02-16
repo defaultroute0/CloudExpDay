@@ -28,11 +28,14 @@ if ! command -v sshpass &>/dev/null; then
   echo ""
 fi
 
-SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR"
+# Use SSHPASS env var instead of -p flag to avoid shell metacharacter issues
+# Force password auth — Supervisor CP VM may use keyboard-interactive
+export SSHPASS="${SUP_PASSWORD}"
+SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o PubkeyAuthentication=no -o PreferredAuthentications=password,keyboard-interactive"
 
 # Test SSH connectivity
 echo ">>> Connecting to Supervisor CP VM at ${SUPERVISOR_IP}..."
-if ! sshpass -p "${SUP_PASSWORD}" ssh ${SSH_OPTS} root@${SUPERVISOR_IP} "echo ok" 2>/dev/null; then
+if ! sshpass -e ssh ${SSH_OPTS} root@${SUPERVISOR_IP} "echo ok" 2>/dev/null; then
   echo "ERROR: Cannot SSH into ${SUPERVISOR_IP}."
   echo "The Supervisor CP password may have changed. Retrieve it from vCenter:"
   echo "  ssh root@vc-wld01-a.vcf.lab   (password: VMware123!VMware123!)"
@@ -47,7 +50,7 @@ echo ""
 echo ">>> Restarting CAPI controllers in ${TKG_NAMESPACE}..."
 echo ""
 
-sshpass -p "${SUP_PASSWORD}" ssh ${SSH_OPTS} root@${SUPERVISOR_IP} bash -s <<REMOTE
+sshpass -e ssh ${SSH_OPTS} root@${SUPERVISOR_IP} bash -s <<REMOTE
 set -e
 
 echo "--- Restarting vmware-system-tkg-webhook ---"
