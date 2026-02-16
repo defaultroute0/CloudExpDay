@@ -266,6 +266,8 @@ docker push harbor-01a.site-a.vcf.lab/opencart/opencart:4.0.1-1-debian-11-r66
 
 ```bash
 # Pg 184-185 — Confirm context
+Is cluster ready ?
+  vcf cluster list
 vcf context list
 vcf context use vcfa:dev-xxxxx:default-project
 # Token if prompted: 0lraViAN9alcyYTZ0KlAuqLqrvEqxsr3
