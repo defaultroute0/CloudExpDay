@@ -153,7 +153,7 @@ kubectl get vmi
 | 2 | Upload → `3.4.0-package.yaml` from Downloads → Finish |
 | 3 | Wait for Active versions: **3** |
 | 4 | Actions → Manage Service |
-| 5 | Select version `3.4.0+v1.33`, select `supervisor` → Next → Next → Finish |
+| 5 | Select version `3.4.0+v1.33`, select `supervisor` → Next → Next → CANCEL IT DONT PROGRESS to Finish as this will take 1hr and impact LAB |
 | 6 | Wait for Service Status: **Configured** |
 
 ---
