@@ -27,7 +27,15 @@ kubectl rollout status deployment runtime-extension-controller-manager -n ${TKG_
 kubectl rollout status deployment capi-controller-manager -n ${TKG_NAMESPACE} --timeout=120s"
 
 VERIFY_CMDS="kubectl get deployments -n ${TKG_NAMESPACE} && echo '' && \
-kubectl get clusterclass -n vmware-system-vks-public 2>/dev/null || true"
+kubectl get clusterclass -A 2>/dev/null | grep builtin-generic || true"
+
+DIAG_CMDS="echo '--- ClusterClass VariablesReconciled Check ---' && \
+kubectl get cc -n ${TKG_NAMESPACE} builtin-generic-v3.4.0 -o jsonpath='{.status.conditions}' 2>/dev/null | python3 -m json.tool 2>/dev/null || \
+kubectl get cc -n vmware-system-vks-public builtin-generic-v3.4.0 -o jsonpath='{.status.conditions}' 2>/dev/null | python3 -m json.tool 2>/dev/null || \
+echo '  Could not retrieve ClusterClass conditions (may not exist yet)' && \
+echo '' && echo '--- Webhook Certificate ---' && \
+kubectl get secret runtime-extension-webhook-service-cert -n ${TKG_NAMESPACE} -o jsonpath='{.data.ca\\.crt}' 2>/dev/null | base64 -d | openssl x509 -noout -dates -serial 2>/dev/null || \
+echo '  Could not retrieve webhook cert'"
 
 echo "=== Fix: Restart CAPI Controllers on Supervisor ==="
 echo ""
@@ -53,10 +61,19 @@ if kubectl get deployment -n "${TKG_NAMESPACE}" vmware-system-tkg-webhook &>/dev
   eval "${VERIFY_CMDS}"
 
   echo ""
+  eval "${DIAG_CMDS}"
+
+  echo ""
   echo "=== Fix Complete ==="
   echo ""
   echo "Retry creating the VKS cluster in VCFA now."
-  echo "If it still fails, wait 2-3 minutes for the webhook cache to fully refresh."
+  echo "If it still fails:"
+  echo "  1. Check VariablesReconciled above — must be True"
+  echo "  2. If False, delete the stale cert to force regeneration:"
+  echo "     kubectl delete secret runtime-extension-webhook-service-cert -n ${TKG_NAMESPACE}"
+  echo "     kubectl rollout restart deployment runtime-extension-controller-manager -n ${TKG_NAMESPACE}"
+  echo "     kubectl rollout restart deployment capi-controller-manager -n ${TKG_NAMESPACE}"
+  echo "  3. Wait 2-3 minutes for webhook cache to refresh, then retry"
   exit 0
 fi
 
@@ -114,10 +131,16 @@ echo ">>> Restarting CAPI controllers via ${CONNECTED}..."
 echo ""
 
 sshpass -e ssh ${SSH_OPTS} root@"${CONNECTED}" \
-  "${RESTART_CMDS} && echo '' && echo '--- Waiting for rollouts ---' && ${WAIT_CMDS} && echo '' && echo '--- Verification ---' && ${VERIFY_CMDS}"
+  "${RESTART_CMDS} && echo '' && echo '--- Waiting for rollouts ---' && ${WAIT_CMDS} && echo '' && echo '--- Verification ---' && ${VERIFY_CMDS} && echo '' && ${DIAG_CMDS}"
 
 echo ""
 echo "=== Fix Complete ==="
 echo ""
 echo "Retry creating the VKS cluster in VCFA now."
-echo "If it still fails, wait 2-3 minutes for the webhook cache to fully refresh."
+echo "If it still fails:"
+echo "  1. Check VariablesReconciled above — must be True"
+echo "  2. If False, delete the stale cert to force regeneration:"
+echo "     kubectl delete secret runtime-extension-webhook-service-cert -n ${TKG_NAMESPACE}"
+echo "     kubectl rollout restart deployment runtime-extension-controller-manager -n ${TKG_NAMESPACE}"
+echo "     kubectl rollout restart deployment capi-controller-manager -n ${TKG_NAMESPACE}"
+echo "  3. Wait 2-3 minutes for webhook cache to refresh, then retry"
