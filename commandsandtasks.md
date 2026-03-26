@@ -304,9 +304,9 @@ vcf context use vks-01
 kubectl get node
 
 # Pg 195 — Add package repo
-vcf package repository add default-repo \
-  --url projects.packages.broadcom.com/vsphere/supervisor/packages/2025.8.19/vks-standard-packages:v2025.8.19 \
-  -n tkg-system
+ vcf package repository add default-repo \
+   --url projects.packages.broadcom.com/vsphere/supervisor/vks-standard-packages/3.6.0-20260211/vks-standard-packages:3.6.0-20260211 \
+   -n tkg-system
 
 # Pg 196 — List available packages
 vcf package available list -n tkg-system
@@ -320,7 +320,7 @@ vcf package install prometheus \
   -p prometheus.kubernetes.vmware.com \
   --values-file prometheus-data-values.yaml \
   -n prometheus-installed \
-  -v 3.5.0+vmware.1-vks.1
+  -v 3.5.0+vmware.1-vks.2
 
 # Pg 201 — Verify Prometheus pods
 kubectl get pods -n tanzu-system-monitoring
@@ -331,7 +331,7 @@ vcf package install telegraf \
   -p telegraf.kubernetes.vmware.com \
   --values-file telegraf-data-values.yaml \
   -n telegraf-installed \
-  -v 1.34.4+vmware.2-vks.1
+  -v 1.37.1+vmware.1-vks.1
 
 # Pg 204 — Verify Telegraf pods
 kubectl get pods -n tanzu-system-telegraf
