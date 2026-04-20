@@ -251,7 +251,7 @@ docker push harbor-01a.site-a.vcf.lab/opencart/opencart:4.0.1-1-debian-11-r66
 |------|--------|
 | 1 | Custom Configuration → Next |
 | 2 | Name: `vks-01`, latest Kubernetes release |
-| 3 | Control Plane: 1 replica, `best-effort-xsmall` |
+| 3 | Control Plane: 1 replica, `best-effort-small` |
 | 4 | Storage: `cluster-wld01-01a-storage-policy`, OS: `Photon` → Next |
 | 5 | Add Nodepool (keep defaults) → Next → Finish |
 | **6** | **⚠️ DOWNLOAD YAML** (click download arrow) — needed for ArgoCD! |
