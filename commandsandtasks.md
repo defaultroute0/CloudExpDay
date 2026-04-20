@@ -235,8 +235,11 @@ docker tag \
 
 # Pg 163 — Push to Harbor
 docker push harbor-01a.site-a.vcf.lab/opencart/opencart:4.0.1-1-debian-11-r66
-```
 
+
+# Pg 164 - View docker images
+docker image ls
+```
 ---
 
 ## Chapter 4 — vks-01 Cluster Manually (Pg 169–222)
