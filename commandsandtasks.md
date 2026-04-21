@@ -93,7 +93,7 @@
 # Pg 48 — Create the vcfa context
 vcf context create vcfa \
   --endpoint auto-a.site-a.vcf.lab \
-  --api-token 0lraViAN9alcyYTZ0KlAuqLqrvEqxsr3 \
+  --api-token Gzy8gHueTtYu200DUJfx3asdZ7NWveuc \
   --tenant-name broadcom \
   --ca-certificate vcfa-cert-chain.pem
 
