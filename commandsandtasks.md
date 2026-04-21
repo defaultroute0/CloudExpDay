@@ -273,7 +273,7 @@ Is cluster ready ?
   vcf cluster list
 vcf context list
 vcf context use vcfa:dev-xxxxx:default-project
-# Token if prompted: 0lraViAN9alcyYTZ0KlAuqLqrvEqxsr3
+# Token if prompted: Gzy8gHueTtYu200DUJfx3asdZ7NWveuc
 
 # Pg 186-188 — Register vks-01 and get kubeconfig
 vcf cluster list
