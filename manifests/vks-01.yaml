@@ -28,8 +28,7 @@ spec:
       replicas: 1
       metadata:
         annotations:
-          # change the line below to match your cl arfitact
-          run.tanzu.vmware.com/resolve-os-image: os-name=photon, content-library=cl-1a6567e672f00e885
+          #run.tanzu.vmware.com/resolve-os-image: os-name=photon, content-library=cl-1a6567e672f00e885
     workers:
       machineDeployments:
         - class: node-pool
@@ -37,5 +36,4 @@ spec:
           replicas: 1
           metadata:
             annotations:
-              # change the line below to match your cl arfitact
-              run.tanzu.vmware.com/resolve-os-image: os-name=photon, content-library=cl-1a6567e672f00e885
+              #run.tanzu.vmware.com/resolve-os-image: os-name=photon, content-library=cl-1a6567e672f00e885
