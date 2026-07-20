@@ -319,6 +319,15 @@ vcf package repository add default-repo \
 # Pg 196 — List available packages
 vcf package available list -n tkg-system
 
+# INSTRUCTOR CHECK — verify the guide's pinned versions exist in the repo
+# before students hit the install steps. Package name is a positional arg
+# (no -p flag on list; -p belongs to install):
+vcf package available list prometheus.kubernetes.vmware.com -n tkg-system
+# → expect 3.5.0+vmware.1-vks.2 in the VERSION column (lab-verified on 1.34.8)
+vcf package available list telegraf.kubernetes.vmware.com -n tkg-system
+# → expect 1.37.1+vmware.1-vks.1 in the VERSION column (lab-verified on 1.34.8)
+# If a pinned version is ever missing, install the newest version listed instead.
+
 # Pg 197 — Change to Lab directory
 cd Documents/Lab
 
