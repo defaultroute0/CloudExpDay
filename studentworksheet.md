@@ -4,6 +4,24 @@ Write down these values as you go. Fill in the 🔴 fields as you progress throu
 
 ---
 
+## ⚠️ Known Issue — Creating the vks-01 Cluster (Module 4, Pg 175)
+
+The Kubernetes release the guide tells you to select (`v1.35.0+vmware.2-vkr.4`) is missing its node image in this lab environment. If you select it, the **Review and Confirm** page shows a red error (`admission webhook "tkr-resolver-cluster-webhook..." denied the request: ... Missing compatible KR/OSImage`). Nothing deploys — nothing is broken.
+
+**To get past it:**
+
+1. In the terminal, make sure you are in the **`vcfa:dev-xxxxx`** context, then run:
+   ```
+   kubectl get osimage
+   ```
+2. Note the **newest version** in that list (e.g. a `v1.34.x` or `v1.33.x`).
+3. Go **back one step** in the Create Cluster wizard and select **that** release instead of the one the guide names.
+4. Continue with the lab **exactly as written** — every later command (packages, Prometheus, Telegraf, OpenCart, ArgoCD) works unchanged with any release from that list.
+
+**Later, in the ArgoCD chapter:** when you edit `vks-01.yaml` for Gitea, set `version:` to the **same release you selected above** (and class to `builtin-generic-v3.6.0`) — otherwise ArgoCD hits the same error when it creates the test-namespace cluster, where it shows up as an app stuck out-of-sync instead of a red banner.
+
+---
+
 ## Supervisor
 
 | # | What | Your Value | How to Get It |

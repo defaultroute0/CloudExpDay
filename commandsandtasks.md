@@ -91,6 +91,7 @@
 
 ```bash
 # Pg 48 — Create the vcfa context
+# API token is unique per pod — it's in ~/Documents/Lab/token
 vcf context create vcfa \
   --endpoint auto-a.site-a.vcf.lab \
   --api-token <get token out of VS Code, or gen a new one under broadcomadmin user in VCFA> \
@@ -141,7 +142,7 @@ kubectl get vmi
 
 ## Chapter 4 — VKS Update (Pg 79–84)
 
-**Goal:** Upload and install VKS 3.4.0 on Supervisor.
+**Goal:** Upload and install VKS 3.6.0 on Supervisor.
 
 ### GUI: vCenter — Upload & Install VKS Package (Pg 79–84)
 
@@ -150,11 +151,13 @@ kubectl get vmi
 | Step | Action |
 |------|--------|
 | 1 | Actions → Add New Version |
-| 2 | Upload → `3.4.0-package.yaml` from Downloads → Finish |
+| 2 | Upload → `3.6.0-package.yaml` from Downloads → Finish |
 | 3 | Wait for Active versions: **3** |
 | 4 | Actions → Manage Service |
-| 5 | Select version `3.4.0+v1.33`, select `supervisor` → Next → Next → CANCEL IT DONT PROGRESS to Finish as this will take 1hr and impact LAB |
-| 6 | Wait for Service Status: **Configured** |
+| 5 | Select version `3.6.0+v1.35`, select `supervisor` → Next → Next → Finish |
+| 6 | Wait for Service Status: **Configured** (guide claims ~3 min; may transiently show Error — close and reopen the window) |
+
+> ⚠️ **Do NOT skip/cancel this install** (the old 3.4-era shortcut). The lab now pins the cluster to a 1.35 VKr, and the pod boots with VKS 3.3.1 which maxes out at VKr 1.32 — without the 3.6.0 install the cluster creation step cannot use the release the guide specifies.
 
 ---
 
@@ -253,12 +256,18 @@ docker image ls
 | Step | Action |
 |------|--------|
 | 1 | Custom Configuration → Next |
+<<<<<<< HEAD
 | 2 | Name: `vks-01`, latest Kubernetes release |
+=======
+| 2 | Name: `vks-01`, Kubernetes release: **`v1.35.0+vmware.2-vkr.4`** (guide's pin — do NOT blindly accept auto-selected "latest") |
+>>>>>>> a198c0f (Update for VKS 3.6.0 lab guide revision)
 | 3 | Control Plane: 1 replica, `best-effort-small` |
 | 4 | Storage: `cluster-wld01-01a-storage-policy`, OS: `Photon` → Next |
 | 5 | Add Nodepool (keep defaults) → Next → Finish |
 | **6** | **⚠️ DOWNLOAD YAML** (click download arrow) — needed for ArgoCD! |
 | 7 | Finish → Wait for **Ready** status |
+
+> ⚠️ **If Review and Confirm shows a red `tkr-resolver-cluster-webhook` error ("Missing compatible KR/OSImage")** — the selected release has no OS image in the pod's content library. Go back one step and select the newest release that appears in `kubectl get osimage` (run from the `vcfa:dev-xxxxx` context; don't trust `kubectl get kr` — it lists releases that have no image). **Any 1.32+ release works** — the package repo used later supports K8s 1.32–1.35, so every downstream command stays verbatim.
 
 > ⚠️ **WAIT ~10 MINUTES** — vks-01 takes at least 10 minutes to fully deploy. Control Plane comes up first, but worker nodes take longer. Do not proceed with CLI configuration until status is **Ready** and both nodes are available.
 
@@ -273,7 +282,11 @@ Is cluster ready ?
   vcf cluster list
 vcf context list
 vcf context use vcfa:dev-xxxxx:default-project
+<<<<<<< HEAD
 # Token if prompted: Gzy8gHueTtYu200DUJfx3asdZ7NWveuc
+=======
+# Token if prompted: per-pod — cat ~/Documents/Lab/token
+>>>>>>> a198c0f (Update for VKS 3.6.0 lab guide revision)
 
 # Pg 186-188 — Register vks-01 and get kubeconfig
 vcf cluster list
@@ -306,10 +319,17 @@ vcf context use vks-01
 # Pg 194 — Verify nodes are Ready
 kubectl get node
 
+<<<<<<< HEAD
 # Pg 195 — Add package repo
  vcf package repository add default-repo \
    --url projects.packages.broadcom.com/vsphere/supervisor/vks-standard-packages/3.6.0-20260211/vks-standard-packages:3.6.0-20260211 \
    -n tkg-system
+=======
+# Pg 195 — Add package repo (supports cluster K8s 1.32–1.35)
+vcf package repository add default-repo \
+  --url projects.packages.broadcom.com/vsphere/supervisor/vks-standard-packages/3.6.0-20260211/vks-standard-packages:3.6.0-20260211 \
+  -n tkg-system
+>>>>>>> a198c0f (Update for VKS 3.6.0 lab guide revision)
 
 # Pg 196 — List available packages
 vcf package available list -n tkg-system
@@ -318,6 +338,8 @@ vcf package available list -n tkg-system
 cd Documents/Lab
 
 # Pg 198-200 — Install Prometheus
+# If the pinned version is rejected, run `vcf package available list -p prometheus.kubernetes.vmware.com -n tkg-system`
+# and install the newest version listed
 kubectl create ns prometheus-installed
 vcf package install prometheus \
   -p prometheus.kubernetes.vmware.com \
@@ -490,6 +512,7 @@ argocd cluster add supervisor \
 | 1 | Extract `create-tkg-cluster-yaml-files.zip` |
 | 2 | Extract `create-vm-yaml-files.zip` |
 | 3 | Open each file (4 total), **remove the `namespace:` line**, save |
+| 4 | In `vks-01.yaml`: change topology **class to `builtin-generic-v3.6.0`** (downloaded YAML may carry an older class like v3.3.0, which fails against VKS 3.6) and make sure **`version:` matches the release actually deployed in dev** (a release with an image in `kubectl get osimage`) — otherwise ArgoCD hits the tkr-resolver error and the app sticks out-of-sync |
 
 #### Upload to Gitea (Pg 258–261)
 
@@ -671,7 +694,7 @@ argocd app get opencart-app
 | 152 | Download VM YAMLs |
 | 180 | Download vks-01.yaml |
 | 242 | Test namespace CPU: **25 GHz** |
-| 254-257 | Remove `namespace:` lines from YAMLs |
+| 254-257 | Remove `namespace:` lines from YAMLs; `vks-01.yaml` class → `builtin-generic-v3.6.0` |
 | 211-213 | Edit `opencart.yaml` with correct IPs (manual deploy — VS Code) |
 | 274, 283 | Verify Server IP in `argo-opencart-lb.yaml` and `argo-opencart-app.yaml` |
 | 278 | Context must be `test-xxxxx` when getting DB VM IP |
@@ -687,4 +710,4 @@ argocd app get opencart-app
 | Harbor | admin | Harbor12345 |
 | Gitea | holuser | VMware123!VMware123! |
 | ArgoCD | admin | (from secret, then VMware123!VMware123!) |
-| API Token | — | 0lraViAN9alcyYTZ0KlAuqLqrvEqxsr3 |
+| API Token | — | per-pod: `cat ~/Documents/Lab/token` |
