@@ -323,7 +323,7 @@ vcf package available list -n tkg-system
 cd Documents/Lab
 
 # Pg 198-200 — Install Prometheus
-# If the pinned version is rejected, run `vcf package available list -p prometheus.kubernetes.vmware.com -n tkg-system`
+# If the pinned version is rejected, run `vcf package available list prometheus.kubernetes.vmware.com -n tkg-system`
 # and install the newest version listed
 kubectl create ns prometheus-installed
 vcf package install prometheus \
