@@ -10,13 +10,9 @@ The Kubernetes release the guide tells you to select (`v1.35.0+vmware.2-vkr.4`) 
 
 **To get past it:**
 
-1. In the terminal, make sure you are in the **`vcfa:dev-xxxxx`** context, then run:
-   ```
-   kubectl get osimage
-   ```
-2. Note the **newest version** in that list (e.g. a `v1.34.x` or `v1.33.x`).
-3. Go **back one step** in the Create Cluster wizard and select **that** release instead of the one the guide names.
-4. Continue with the lab **exactly as written** — every later command (packages, Prometheus, Telegraf, OpenCart, ArgoCD) works unchanged with any release from that list.
+**To get past it: select `v1.34.8+vmware.1-vkr.1` instead** (go back one step in the Create Cluster wizard). Then continue with the lab **exactly as written** — every later command (packages, Prometheus, Telegraf, OpenCart, ArgoCD) works unchanged on 1.34.
+
+If that release is also unavailable in your pod, run `kubectl get osimage` from the **`vcfa:dev-xxxxx`** context and select the **newest version listed** — anything 1.32 or newer works.
 
 **Later, in the ArgoCD chapter:** when you edit `vks-01.yaml` for Gitea, set `version:` to the **same release you selected above** (and class to `builtin-generic-v3.6.0`) — otherwise ArgoCD hits the same error when it creates the test-namespace cluster, where it shows up as an app stuck out-of-sync instead of a red banner.
 
