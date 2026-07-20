@@ -259,7 +259,7 @@ docker image ls
 <<<<<<< HEAD
 | 2 | Name: `vks-01`, latest Kubernetes release |
 =======
-| 2 | Name: `vks-01`, Kubernetes release: **`v1.35.0+vmware.2-vkr.4`** (guide's pin — do NOT blindly accept auto-selected "latest") |
+| 2 | Name: `vks-01`, Kubernetes release: **`v1.34.8+vmware.1-vkr.1`** — NOT the `v1.35.0+vmware.2-vkr.4` the guide names (its image is missing from the lab pods' content library, see warning below) |
 >>>>>>> a198c0f (Update for VKS 3.6.0 lab guide revision)
 | 3 | Control Plane: 1 replica, `best-effort-small` |
 | 4 | Storage: `cluster-wld01-01a-storage-policy`, OS: `Photon` → Next |
@@ -267,7 +267,7 @@ docker image ls
 | **6** | **⚠️ DOWNLOAD YAML** (click download arrow) — needed for ArgoCD! |
 | 7 | Finish → Wait for **Ready** status |
 
-> ⚠️ **If Review and Confirm shows a red `tkr-resolver-cluster-webhook` error ("Missing compatible KR/OSImage")** — the selected release has no OS image in the pod's content library. Go back one step and select the newest release that appears in `kubectl get osimage` (run from the `vcfa:dev-xxxxx` context; don't trust `kubectl get kr` — it lists releases that have no image). **Any 1.32+ release works** — the package repo used later supports K8s 1.32–1.35, so every downstream command stays verbatim.
+> ⚠️ **Why not the guide's 1.35 release (verified Jul 2026):** the lab guide (Pg 175) says select `v1.35.0+vmware.2-vkr.4`, but that release has no node image in the lab pods' content library — it fails at Review and Confirm with `admission webhook "tkr-resolver-cluster-webhook" ... Missing compatible KR/OSImage`. Syncing the CL doesn't fix it (catalog syncs, but the image never ingests into `kubectl get osimage`, and the webhook rejects before on-demand download can trigger). **`v1.34.8+vmware.1-vkr.1` has its image and deploys cleanly** — and every downstream command (package repo supports K8s 1.32–1.35, Prometheus, Telegraf, OpenCart, ArgoCD) works verbatim on it. If it's ever missing too, select the newest release shown by `kubectl get osimage` from the `vcfa:dev-xxxxx` context (don't trust `kubectl get kr` — it lists releases that have no image).
 
 > ⚠️ **WAIT ~10 MINUTES** — vks-01 takes at least 10 minutes to fully deploy. Control Plane comes up first, but worker nodes take longer. Do not proceed with CLI configuration until status is **Ready** and both nodes are available.
 
@@ -512,7 +512,7 @@ argocd cluster add supervisor \
 | 1 | Extract `create-tkg-cluster-yaml-files.zip` |
 | 2 | Extract `create-vm-yaml-files.zip` |
 | 3 | Open each file (4 total), **remove the `namespace:` line**, save |
-| 4 | In `vks-01.yaml`: change topology **class to `builtin-generic-v3.6.0`** (downloaded YAML may carry an older class like v3.3.0, which fails against VKS 3.6) and make sure **`version:` matches the release actually deployed in dev** (a release with an image in `kubectl get osimage`) — otherwise ArgoCD hits the tkr-resolver error and the app sticks out-of-sync |
+| 4 | In `vks-01.yaml`: change topology **class to `builtin-generic-v3.6.0`** and **`version:` to `v1.34.8---vmware.1-vkr.1`** (same release deployed in dev; `---` encodes `+` in these YAMLs). Downloaded YAML may carry older values (e.g. class v3.3.0) — stale values make ArgoCD hit the same tkr-resolver error and the app sticks out-of-sync. A corrected copy is in this repo: `manifests/vks-01.yaml` |
 
 #### Upload to Gitea (Pg 258–261)
 
