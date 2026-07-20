@@ -256,11 +256,7 @@ docker image ls
 | Step | Action |
 |------|--------|
 | 1 | Custom Configuration → Next |
-<<<<<<< HEAD
-| 2 | Name: `vks-01`, latest Kubernetes release |
-=======
 | 2 | Name: `vks-01`, Kubernetes release: **`v1.34.8+vmware.1-vkr.1`** — NOT the `v1.35.0+vmware.2-vkr.4` the guide names (its image is missing from the lab pods' content library, see warning below) |
->>>>>>> a198c0f (Update for VKS 3.6.0 lab guide revision)
 | 3 | Control Plane: 1 replica, `best-effort-small` |
 | 4 | Storage: `cluster-wld01-01a-storage-policy`, OS: `Photon` → Next |
 | 5 | Add Nodepool (keep defaults) → Next → Finish |
@@ -282,11 +278,7 @@ Is cluster ready ?
   vcf cluster list
 vcf context list
 vcf context use vcfa:dev-xxxxx:default-project
-<<<<<<< HEAD
-# Token if prompted: Gzy8gHueTtYu200DUJfx3asdZ7NWveuc
-=======
-# Token if prompted: per-pod — cat ~/Documents/Lab/token
->>>>>>> a198c0f (Update for VKS 3.6.0 lab guide revision)
+# Token if prompted: Gzy8gHueTtYu200DUJfx3asdZ7NWveuc (per-pod — get yours from the VS Code token file)
 
 # Pg 186-188 — Register vks-01 and get kubeconfig
 vcf cluster list
@@ -319,17 +311,10 @@ vcf context use vks-01
 # Pg 194 — Verify nodes are Ready
 kubectl get node
 
-<<<<<<< HEAD
-# Pg 195 — Add package repo
- vcf package repository add default-repo \
-   --url projects.packages.broadcom.com/vsphere/supervisor/vks-standard-packages/3.6.0-20260211/vks-standard-packages:3.6.0-20260211 \
-   -n tkg-system
-=======
 # Pg 195 — Add package repo (supports cluster K8s 1.32–1.35)
 vcf package repository add default-repo \
   --url projects.packages.broadcom.com/vsphere/supervisor/vks-standard-packages/3.6.0-20260211/vks-standard-packages:3.6.0-20260211 \
   -n tkg-system
->>>>>>> a198c0f (Update for VKS 3.6.0 lab guide revision)
 
 # Pg 196 — List available packages
 vcf package available list -n tkg-system
