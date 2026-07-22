@@ -354,6 +354,10 @@ vcf package install telegraf \
 
 # Pg 204 — Verify Telegraf pods
 kubectl get pods -n tanzu-system-telegraf
+
+# Verify installed packages (not in guide) — prometheus + telegraf should show
+# Reconcile succeeded, alongside the VMware-managed core packages in vmware-system-tkg
+vcf package installed list -A
 ```
 
 ### GUI: Edit opencart.yaml with IPs (Pg 211–213)
