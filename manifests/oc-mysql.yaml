@@ -8,7 +8,8 @@ metadata:
     topology.kubernetes.io/zone: z-wld-a
 spec:
   className: best-effort-small
-  # Friendly image name: noble-server-cloudimg-amd64, do kubectl get vmi in the dvcfa-dev-xxx namespace to see your unique imageName
+  # Friendly image name: noble-server-cloudimg-amd64. Your vmi- ID is pod-unique —
+  # run "kubectl get vmi" from the vcfa:dev-xxxxx context and replace the value below
   imageName: vmi-58bfe5816baf49fa0
   storageClass: cluster-wld01-01a-storage-policy
   powerState: PoweredOn
