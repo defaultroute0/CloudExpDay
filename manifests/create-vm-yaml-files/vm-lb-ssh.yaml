@@ -1,8 +1,8 @@
 apiVersion: vmoperator.vmware.com/v1alpha5
 kind: VirtualMachineService
 metadata:
-  name: vm-lb-7jp8
-  namespace: dev-bnnj5
+  name: vm-lb-ssh
+#  namespace: dev-xxx
 spec:
   selector:
     vm-lb-7jp8: vm-lb-selector
