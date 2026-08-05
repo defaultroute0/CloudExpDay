@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: dev-bnnj5
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: primary-container
+          image: harbor-01a.vcf.lab/library/nginx:latest
+          resources:
+            requests:
+              cpu: 1000m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 256Mi
+          ports:
+            - containerPort: 80
+              name: http-80
+              protocol: TCP
