@@ -2,7 +2,7 @@ apiVersion: cluster.x-k8s.io/v1beta2
 kind: Cluster
 metadata:
   name: vks-01
-  namespace: prod-t2938
+#  namespace: prod-xxx
 spec:
   clusterNetwork:
     pods:
