@@ -1,6 +1,6 @@
-# Lab Guide - Command Reference
+# Lab Guide - Command Reference (VCF 9.0)
 
-This repo contains commands only extracted from the xxxx Lab Guide.
+This branch contains commands extracted from the **VCF 9.0** Field Demo Lab Guide (OpenCart-based lab). For the current **VCF 9.1** lab (Bookstore-based), see the [main branch](../../tree/main).
 
 ## The Problem
 

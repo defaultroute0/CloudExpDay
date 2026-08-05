@@ -1,4 +1,4 @@
-# VCF Field Demo Lab — Complete Instructor Reference
+# VCF 9.0 Field Demo Lab — Complete Instructor Reference
 
 > **What this lab does:** Deploy OpenCart (MySQL VM + containerized frontend) twice — first manually in `dev-xxxxx`, then automated via ArgoCD in `test-xxxxx`.
 
