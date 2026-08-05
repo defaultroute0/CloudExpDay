@@ -1,6 +1,5 @@
 # Lab Guide - Command Reference
 
-This repo contains commands only extracted from the VCF Field Demo Lab Guide.
 
 **Branches:** `main` = the current **VCF 9.1** lab guide · [`9.0`](../../tree/9.0) = the previous VCF 9.0 lab (OpenCart-based), kept frozen for reference.
 
