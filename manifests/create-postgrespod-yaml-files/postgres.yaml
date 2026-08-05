@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: dev-bnnj5
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: primary-container
+          image: harbor-01a.vcf.lab/library/postgres:14-alpine
+          resources:
+            requests:
+              cpu: 1000m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 512Mi
+          env:
+            - name: POSTGRES_DB
+              value: my_database
+            - name: POSTGRES_USER
+              value: db_admin
+            - name: POSTGRES_PASSWORD
+              value: VMware123!VMware123!
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: storage
+              mountPath: /var/lib/postgresql/data
+              subPath: pgdata
+          ports:
+            - containerPort: 5432
+              name: tcp-5432
+              protocol: TCP
+  volumeClaimTemplates:
+    - metadata:
+        name: storage
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 5Gi
+        storageClassName: vsan-default-storage-policy
