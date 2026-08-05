@@ -1,0 +1,25 @@
+apiVersion: vmoperator.vmware.com/v1alpha5
+kind: VirtualMachine
+metadata:
+  name: cli-vm
+  namespace: dev-bnnj5
+  labels:
+    vm-selector: cli-vm
+    vm-lb-7jp8: vm-lb-selector
+    topology.kubernetes.io/zone: z-wld-a
+spec:
+  className: best-effort-small
+  # Friendly image name: ubuntu-24.04-noble-server-cloudimg-amd64
+  imageName: vmi-50181edb8645914cf
+  storageClass: vsan-default-storage-policy
+  powerState: PoweredOn
+  network:
+    hostName: cli-vm
+    domainName: vcf.lab
+    nameservers:
+      - 8.8.8.8
+  bootstrap:
+    cloudInit:
+      rawCloudConfig:
+        name: cli-vm-bootstrap-secret
+        key: user-data
