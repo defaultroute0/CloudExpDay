@@ -1,22 +1,25 @@
-# VCF Field Demo Lab — Complete Instructor Reference
+# VCF 9.1 Field Demo Lab — Complete Instructor Reference
 
-> **What this lab does:** Deploy OpenCart (MySQL VM + containerized frontend) twice — first manually in `dev-xxxxx`, then automated via ArgoCD in `test-xxxxx`.
+> **What this lab does:** Deploy the **Bookstore** application (Go frontend + PostgreSQL + Redis + MinIO + Elasticsearch, fronted by an Istio Gateway) on a VKS cluster — first manually with Helm in `prod-xxxxx`, then automated via Argo CD GitOps in `test-xxxxx`. Along the way: VM Service (cli-vm), Container Service (nginx + postgres), VKS 3.6.2 update, add-ons via VCF Automation, Day 2 ops in VCF Operations.
+
+> ⚠️ **Status: generated from the Aug 2026 scrape of the 9.1 lab guide (265 pages). Not yet lab-validated** — page-flow and commands are verbatim from the guide; items marked *(verify in lab)* are inferences. Timing/wait notes are only the ones the 9.1 guide itself states.
 
 ---
 
 ## Table of Contents
 
 - [Module 2: Enabling VCF Cloud Services](#module-2-enabling-vcf-cloud-services)
-  - [Chapter 2 — VM Service Setup](#chapter-2--vm-service-setup-pg-1851)
-  - [Chapter 3 — Add Services](#chapter-3--add-services-pg-6270)
-  - [Chapter 4 — VKS Update](#chapter-4--vks-update-pg-7984)
-- [Module 3: Building Cloud Topology](#module-3-building-cloud-topology)
-  - [Chapter 2 — Org Setup](#chapter-2--org-setup-pg-121122)
-- [Module 4: Consuming VCF Cloud Services](#module-4-consuming-vcf-cloud-services)
-  - [Chapter 2 — Deploy MySQL VM](#chapter-2--deploy-mysql-vm-pg-139154)
-  - [Chapter 3 — Harbor](#chapter-3--harbor-pg-159164)
-  - [Chapter 4 — vks-01 Cluster Manually](#chapter-4--vks-01-cluster-manually-pg-169222)
-  - [Chapter 5 — vks-01 Cluster Automated with ArgoCD](#chapter-5--vks-01-cluster-automated-with-argocd-pg-229292)
+  - [Chapter 1 — Verify Supervisor](#chapter-1--verify-supervisor-pg-914)
+  - [Chapter 2 — VM Service Setup + VCF CLI](#chapter-2--vm-service-setup--vcf-cli-pg-1847)
+  - [Chapter 3 — Harbor, ArgoCD Service, LCI](#chapter-3--harbor-argocd-service-lci-pg-5162)
+  - [Chapter 4 — VKS Update to 3.6.2](#chapter-4--vks-update-to-362-pg-6677)
+- [Module 3: Consuming VCF Cloud Services](#module-3-consuming-vcf-cloud-services)
+  - [Chapter 1 — Bookstore App Overview](#chapter-1--bookstore-app-overview-pg-82)
+  - [Chapter 2 — Deploy cli-vm with VM Service](#chapter-2--deploy-cli-vm-with-vm-service-pg-86102)
+  - [Chapter 3 — Container Service: nginx + postgres](#chapter-3--container-service-nginx--postgres-pg-105141)
+  - [Chapter 4 — vks-01 Cluster + Bookstore via Helm](#chapter-4--vks-01-cluster--bookstore-via-helm-pg-144182)
+  - [Chapter 5 — Day 2 Operations](#chapter-5--day-2-operations-pg-186200)
+  - [Chapter 6 — Continuous Delivery with Argo CD](#chapter-6--continuous-delivery-with-argo-cd-pg-204264)
 - [Quick Reference](#quick-reference)
 
 ---
@@ -25,651 +28,613 @@
 
 | Context | What it targets |
 |---------|-----------------|
-| `vcfa:dev-xxxxx` | Dev namespace via VCFA |
-| `vks-01` | The vks-01 guest cluster |
-| `supervisor:test-xxxxx` | Test namespace on Supervisor |
-| `terminal` | Plain shell (no VCF context needed) |
-| `argocd` | ArgoCD CLI session |
+| `vcfa:dev-xxxxx` | Dev namespace via VCFA (CCI) |
+| `vcfa:prod-xxxxx` | Prod namespace via VCFA (CCI) — vks-01 lives here |
+| `vks-01` | The vks-01 guest cluster (CCI type) |
+| `supervisor:test-xxxxx` | Test namespace on Supervisor (K8S/basic auth) |
+| `terminal` | Plain shell / ssh to cli-vm (no VCF context needed) |
+| `argocd` | Argo CD CLI session (`argocd login`) |
+| `--kubeconfig vks-argo-kubeconfig.yaml` | vks-argo guest cluster, addressed directly by file — never a named context |
+
+**9.1 environment constants:** Org `acme-east-a` · Region `us-east-a` · Zone `z-wld-a` · VPC `default-us-east-a` (Shared VPC) · Storage class `vsan-default-storage-policy` · Supervisor endpoint `10.1.8.132` · Git = **GitLab** (`https://gitlab.vcf.lab`) · API token pre-created in `~/Downloads/my-token.txt`
 
 ---
 
 # Module 2: Enabling VCF Cloud Services
 
-## Chapter 2 — VM Service Setup (Pg 18–51)
+## Chapter 1 — Verify Supervisor (Pg 9–14)
 
-**Goal:** Create VM Class, Content Library, namespace, then set up VCF CLI.
+**Goal:** Confirm Supervisor is running and HA. Read-only, no CLI.
 
-### GUI: vCenter — Create VM Class (Pg 22–25)
+> vc-wld01-a Client (Region A bookmark) → Login `administrator@wld.sso` / `VMware123!VMware123!` → Menu → Supervisor Management
 
-> Menu → Supervisor Management → Services → VM Service: Manage → VM Classes
+| Step | Action |
+|------|--------|
+| 1 | Supervisors tab → scroll right → **Config Status** and **Host Config Status** = `Running` for `supervisor-wld-a` |
+| 2 | Click `supervisor-wld-a` → Configure → General → expand Control Plane → confirm **3 CP VMs** (HA pre-enabled in lab) |
+
+---
+
+## Chapter 2 — VM Service Setup + VCF CLI (Pg 18–47)
+
+**Goal:** Review storage policies, create VM Class, walk the Content Library wizard (cancel — pre-created), bump namespace class storage, create dev namespace, set up VCF CLI.
+
+### GUI: vCenter — Storage Policies (Pg 18)
+
+> Menu → Policies and Profiles → VM Storage Policies → `vSAN Default Storage Policy`
+
+Note the **K8s Compliant Name**: `vsan-default-storage-policy` — this is the name used in all manifests.
+
+### GUI: vCenter — Create VM Class (Pg 19–25)
+
+> Menu → Supervisor Management → Services → VM Service: Manage → VM Classes tab
 
 | Step | Action |
 |------|--------|
 | 1 | Create New VM Class |
 | 2 | Name: `custom-small` |
-| 3 | Leave hardware defaults → Next → Finish |
+| 3 | Defaults through Virtual Hardware / VM Options / Advanced → Next → Finish |
 
-### GUI: VCFA — Create Content Library (Pg 29–36)
+*(Demonstration only — this class is not used later.)*
 
-> Region A → VCF Automation → Login as broadcomadmin
+### GUI: VCFA — Content Library Walkthrough (Pg 26–32)
 
-| Step | Action |
-|------|--------|
-| 1 | Build & Deploy → Content Libraries → Create Content Library |
-| 2 | Name: `vm-images`, keep "Assign to all namespaces" checked → Next |
-| 3 | Region: `us-west`, Storage Class: `cluster-wld01-01a-storage-policy` → Next → Confirm |
-| 4 | Click `vm-images` → VM Images → Upload |
-| 5 | Upload `noble-server-cloudimg-amd64.ova` from Downloads → Submit |
-
-### GUI: VCFA — Increase Namespace Storage Quota (Pg 38–39)
-
-> Manage & Govern → Namespace Class → Medium
+> Region A → VCF Automation → login `acme-east-a` → Build & Deploy → Content Libraries → New
 
 | Step | Action |
 |------|--------|
-| 1 | VM & Storage Class tab |
-| 2 | Edit `cluster-wld01-01a-storage-policy` → **500 GB** (not MB!) |
+| 1 | Name `vm-images`, Organization Content Library, keep "Assign to all current and future namespaces", **Subscribe to a library** → Next |
+| 2 | Canonical → Next |
+| 3 | Region `us-east-a`, Storage Class `vSAN Default Storage Policy` → Next |
+| 4 | **Cancel** — the library already exists in the lab (walkthrough only!) |
+
+### GUI: VCFA — Namespace Class Storage (Pg 33–34)
+
+> Manage & Govern → Namespace Class → Medium → VM & Storage Class tab
+
+| Step | Action |
+|------|--------|
+| 1 | Select `vsan-default-storage-policy` → Edit |
+| 2 | Limit **400 GB** — **change MB to GB!** |
 | 3 | Save → Save |
 
-### GUI: VCFA — Create Dev Namespace (Pg 42–44)
+### GUI: VCFA — Project Users + Dev Namespace (Pg 35–40)
 
-> Projects → default-project → Namespaces → New Namespace
+> Manage & Govern → Projects → default-project
 
-| Field | Value |
-|-------|-------|
-| Name | `dev` |
-| Namespace class | `medium` |
-| Region | `us-west` |
-| VPC | `us-west-Default-VPC` |
-| Zone | ✓ `z-wld-a` |
+| Step | Action |
+|------|--------|
+| 1 | Users → + ADD USERS → type `acme-east-a`, roles **Project Administrator** + **Project Advanced User** → **Cancel** (already assigned in lab — walkthrough only) |
+| 2 | Namespaces → New Namespace |
+| 3 | Name `dev`, Project `default-project`, Namespace class **`small-reserved`**, Region `us-east-a`, Zone `z-wld-a`, Networking **Shared VPC**, VPC `default-us-east-a` → Create |
+| 4 | Wait for **Active** (refresh page). **Note the unique name `dev-xxxxx`** |
 
-→ Wait for **Active** status. Note the unique namespace name (e.g., `dev-xxxxx`).
+### GUI: VCFA — API Token (Pg 41–42)
 
-> ⚠️ **WAIT** — The namespace needs time to fully initialize after showing Active. If you proceed to `vcf context create vcfa` too quickly, the dev-xxxxx sub-context will not be auto-discovered and you'll need to re-create the context.
+> User menu → My Account → API Tokens
 
-### CLI: Set Up VCF CLI (Pg 48–51)
+Token is **pre-created** and saved at `~/Downloads/my-token.txt`. Do NOT delete it — it cannot be re-displayed. (Pod-example value: `1FasL1HLOqRefVuEepZFqEkYrT28ZGus` — always use the one from the file.)
+
+### CLI: Set Up VCF CLI (Pg 43–47)
 
 ```bash
-# Pg 48 — Create the vcfa context
-# API token is unique per pod — it's in ~/Documents/Lab/token
+# Pg 44 — Create the vcfa context (token from ~/Downloads/my-token.txt)
 vcf context create vcfa \
   --endpoint auto-a.site-a.vcf.lab \
-  --api-token <get token out of VS Code, or gen a new one under broadcomadmin user in VCFA> \
-  --tenant-name broadcom \
+  --api-token <token from ~/Downloads/my-token.txt> \
+  --tenant-name acme-east-a \
   --ca-certificate vcfa-cert-chain.pem
 
-# Pg 49 — Switch to dev namespace (interactive menu)
+# Pg 45 — Switch to dev namespace (interactive menu)
 vcf context use
 # → Select: vcfa:dev-xxxxx:default-project
 ```
 
 > [!WARNING]
-> **CONTEXT: `vcfa:dev-xxxxx`** — All commands below run against the dev namespace via VCFA.
+> **CONTEXT: `vcfa:dev-xxxxx`** — Commands below run against the dev namespace via VCFA.
 
 ```bash
-# Pg 50-51 — Verify VMs
+# Pg 46 — No VMs yet
 kubectl get vm
+
+# Pg 47 — Verify image from Content Library is visible
 kubectl get vmi
+# → expect noble-server-cloudimg-amd64
 ```
 
 ---
 
-## Chapter 3 — Add Services (Pg 62–70)
+## Chapter 3 — Harbor, ArgoCD Service, LCI (Pg 51–62)
 
-**Goal:** Register ArgoCD and Local Consumption Interface services on Supervisor.
+**Goal:** Verify regional Harbor, register the Argo CD Supervisor Service, verify the Local Consumption Interface (LCI — enabled by default in 9.1, no install needed).
 
-### GUI: vCenter — Add ArgoCD Service (Pg 62–66)
+### GUI: VCFA Provider — Verify Harbor (Pg 51–55)
+
+> Region A → VCF Automation - Provider → login `admin` (organization = system) → Service Management → Harbor → Details
+
+| Step | Action |
+|------|--------|
+| 1 | Status = **Healthy** |
+| 2 | Open Region A → Harbor bookmark → login `admin` / `Harbor123!` → leave tab open |
+
+### GUI: vCenter — Add ArgoCD Service (Pg 56–61)
 
 > Menu → Supervisor Management → Services → Add
 
 | Step | Action |
 |------|--------|
-| 1 | Upload → `1.0.1-24896502.yml` from Downloads → Finish |
+| 1 | Upload → **`supervisor-service-argocd-legacy-1.1.0-25100889.yml`** from Downloads → Finish |
 | 2 | ArgoCD tile → Actions → Manage Service |
-| 3 | Select `supervisor` → Next → Next → Finish |
+| 3 | Select `supervisor-wld-a` → Next → (compat validation) Next → Finish |
+| 4 | Wait for **Configured** — check Supervisors → Overview under Supervisor Services |
 
-### GUI: vCenter — Add LCI Service (Pg 67–70)
+> 💡 9.1 ships TWO Supervisor Service YAML flavours; the lab uses the **legacy** flavour (pulls from `projects.packages.broadcom.com`). The standard flavour pulls from the new on-prem Software Depot.
 
-> Services → Add
+### GUI: vCenter — Verify LCI (Pg 62)
 
-| Step | Action |
-|------|--------|
-| 1 | Upload → `lci-svs-9.0.1.yaml` from Downloads → Finish |
-| 2 | Local Consumption Interface tile → Actions → Manage Service |
-| 3 | Select `supervisor` → Next → Next → Finish |
+> Menu → Supervisor Management → Namespaces tab → `dev-xxxxx` → Resources tab
+
+LCI is **enabled by default in VCF 9.1**. If Resources tab doesn't load, refresh the browser.
 
 ---
 
-## Chapter 4 — VKS Update (Pg 79–84)
+## Chapter 4 — VKS Update to 3.6.2 (Pg 66–77)
 
-**Goal:** Upload and install VKS 3.6.0 on Supervisor.
+**Goal:** Upload and install VKS 3.6.2 on the Supervisor.
 
-### GUI: vCenter — Upload & Install VKS Package (Pg 79–84)
+### GUI: vCenter — Upload & Install VKS Package (Pg 69–74)
 
 > Menu → Supervisor Management → Services → Kubernetes Service
 
 | Step | Action |
 |------|--------|
 | 1 | Actions → Add New Version |
-| 2 | Upload → `3.6.0-package.yaml` from Downloads → Finish |
-| 3 | Wait for Active versions: **3** |
+| 2 | Upload → `/home/holuser/Downloads/3.6.2-package.yaml` → Finish |
+| 3 | Wait for Active versions: **2** |
 | 4 | Actions → Manage Service |
-| 5 | Select version `3.6.0+v1.35`, select `supervisor` → Next → Next → Finish |
-| 6 | Wait for Service Status: **Configured** (guide claims ~3 min; may transiently show Error — close and reopen the window) |
+| 5 | Install version **`3.6.2+v1.35`**, select `supervisor-wld-a` → Next → Next → Finish |
+| 6 | Actions → Manage Service → wait for Service Status **Configured** (guide: ~2–3 min; may transiently show **Error** — normal, config is still ongoing; close/reopen the window or refresh browser to see the updated status) |
 
-> ⚠️ **Do NOT skip/cancel this install** (the old 3.4-era shortcut). The lab now pins the cluster to a 1.35 VKr, and the pod boots with VKS 3.3.1 which maxes out at VKr 1.32 — without the 3.6.0 install the cluster creation step cannot use the release the guide specifies.
-
----
-
-# Module 3: Building Cloud Topology
-
-## Chapter 2 — Org Setup (Pg 121–122)
-
-**Goal:** Add custom VM Class to Broadcom org entitlements.
-
-### GUI: VCFA Provider — Add VM Class to Org (Pg 121–122)
-
-> Region A → VCF Automation - Provider → Login as admin
+### GUI: Verify (Pg 75–77)
 
 | Step | Action |
 |------|--------|
-| 1 | Organizations → Broadcom → Region Quota |
-| 2 | Edit under VM Classes |
-| 3 | Page 2 → ✓ check `custom-small` → Save |
+| 1 | Namespaces → `dev-xxxxx` → Resources → Kubernetes tile → Create Cluster → Next → confirm latest release is **v1.35.x** → **Cancel** (do NOT deploy here) |
+| 2 | Menu → Content Libraries → **Kubernetes Service Content Library** → view distributed VKrs (auto-subscribed library; images pull on first use) |
 
 ---
 
-# Module 4: Consuming VCF Cloud Services
+# Module 3: Consuming VCF Cloud Services
 
-## Chapter 2 — Deploy MySQL VM (Pg 139–154)
+## Chapter 1 — Bookstore App Overview (Pg 82)
 
-**Goal:** Create the oc-mysql backend VM with load balancer.
+No actions. Architecture: Go web frontend + PostgreSQL + Redis + MinIO (+ optional Elasticsearch for search), images from regional Harbor, ingress via **Istio Gateway** (Network Service LB), stateful services on Volume Service PVs. Deployed first with **Helm**, then with **Argo CD**.
 
-### GUI: VCFA — Create oc-mysql VM (Pg 139–152)
+---
 
-> Region A → VCF Automation → Login as broadcomadmin → Services (dev-xxxxx) → Virtual Machine → Create VM
+## Chapter 2 — Deploy cli-vm with VM Service (Pg 86–102)
+
+**Goal:** As a consumer, deploy the `cli-vm` Ubuntu VM (docker + kubectl via cloud-init) with an SSH load balancer.
+
+### GUI: VCFA — Create cli-vm (Pg 86–100)
+
+> Region A → VCF Automation → login `acme-east-a` → Services tile: namespace `dev-xxxxx` → Virtual Machine → Create VM
 
 | Step | Action |
 |------|--------|
 | 1 | Deploy from OVF → Next |
-| 2 | Name: `oc-mysql`, Zone: `z-wld-a` |
-| 3 | Image: `noble-server-cloudimg-amd64` |
-| 4 | VM Class: `best-effort-small`, Power State: Powered On → Next |
-| 5 | Load Balancer → Add → New |
-| 6 | Port 1: Name `ssh`, Port `22`, Target `22` → Add |
-| 7 | Port 2: Name `mysql`, Port `3306`, Target `3306` → Add → Save |
-| 8 | Guest Customization → Raw Configuration |
-| 9 | Open VS Code → `oc-mysql-cloud-config.yaml` → Ctrl+A, Ctrl+C |
-| 10 | Paste into Raw Configuration (Ctrl+V) → Next |
-| 11 | Hostname: `oc-mysql`, Domain: `vcf.lab`, Nameservers: `8.8.8.8` → Add → Next |
-| **12** | **⚠️ DOWNLOAD YAMLs** (click download arrow) — needed for ArgoCD! |
-| 13 | Deploy VM → Wait for completion |
+| 2 | Name: `cli-vm`, Zone: `z-wld-a` |
+| 3 | Image: `ubuntu-24.04-noble-server-cloudimg-amd64` |
+| 4 | VM Class: `best-effort-small`, Storage Class as-is, Power State: Powered On → Next |
+| 5 | Load Balancer → Add → New: Name `ssh`, Port `22`, Target `22` → Add → Save |
+| 6 | Guest Customization → Cloud-init → **Raw Configuration** |
+| 7 | Open `~/Downloads/cli-vm-cloudinit-config.yaml` → Ctrl+A, Ctrl+C → paste (Ctrl+V) → Next. (Mac: Intercept Paste OFF; Windows: Intercept Paste + Remap cmd OFF) |
+| 8 | Global Network Settings: Host Name `cli-vm`, Domain `vcf.lab`, Nameservers `8.8.8.8` → **Add** → Next (ignore the 192.0.2.1 example row) |
+| **9** | **⚠️ DOWNLOAD the YAML manifests** (down-arrow) and confirm downloaded |
+| 10 | Deploy VM (takes a few minutes) |
+| 11 | Network Service → Services → note the **External IP** of the new LB |
 
-→ Note the **External IP** from Network Service for the MySQL load balancer.
+### CLI: Verify cli-vm (Pg 102)
+
+> [!WARNING]
+> **CONTEXT: `terminal`** — plain shell, no VCF context needed.
+
+```bash
+# Pg 102 — ssh in (devops / DevOps123, set by cloud-init)
+ssh devops@<cli-vm-LB-external-IP>
+docker --version
+exit
+```
+
+> ⚠️ Guide: cloud-init can take up to **5 minutes** — docker may not be installed yet if you ssh in too early.
 
 ---
 
-## Chapter 3 — Harbor (Pg 159–164)
+## Chapter 3 — Container Service: nginx + postgres (Pg 105–141)
 
-**Goal:** Create Harbor project and push OpenCart image.
+**Goal:** Push nginx to Harbor, deploy it via the new **Container Service** (vSphere Pods under the hood), then deploy a postgres StatefulSet with a persistent volume.
 
-### GUI: Harbor — Create Project (Pg 159)
+### CLI: Push nginx to Harbor (Pg 106)
 
-> https://harbor-01a.site-a.vcf.lab → Login: admin / Harbor12345
+> [!WARNING]
+> **CONTEXT: `terminal`** — the guide says "a new terminal session on the console VM". Docker was installed on **cli-vm** — if docker isn't on the console, ssh to cli-vm first *(verify in lab which host has the ghcr.io image pre-pulled)*.
+
+```bash
+# Pg 106
+docker tag ghcr.io/tmm-demo-apps/nginx:latest harbor-01a.vcf.lab/library/nginx:latest
+docker push harbor-01a.vcf.lab/library/nginx:latest
+# (docker login harbor-01a.vcf.lab as admin/Harbor123! if prompted)
+```
+
+### GUI: Harbor — Verify Image (Pg 107–110)
+
+> Region A → Harbor → login `admin` / `Harbor123!` → `library` project → confirm `nginx` present
+
+### GUI: VCFA — Deploy nginx Container (Pg 111–124)
+
+> VCF Automation (acme-east-a) → Build & Deploy → namespace `dev-xxxxx` → Container → Create New Instance
 
 | Step | Action |
 |------|--------|
-| 1 | New Project |
-| 2 | Name: `opencart`, Access: ✓ Public → OK |
+| 1 | Name: `nginx`, Primary Container Image: `harbor-01a.vcf.lab/library/nginx:latest` |
+| 2 | CPU/Memory/Replicas: defaults → Next |
+| 3 | Load Balancer dropdown → Attach Load Balancer: Name `nginx-lb`, Port Name `http-80`, TCP, Port `80`, Target `80`, ✓ Attach to Primary Container → Add → Save → Next |
+| 4 | Review auto-generated YAML → **Save/download the YAML** → Create Container Instance |
+| 5 | Wait for **Ready** → click `nginx` → note LB **External IP** |
+| 6 | Browse `http://<nginx-LB-IP>` → nginx page |
 
-### CLI: Push Image to Harbor (Pg 160–164)
+### GUI: VCFA — Deploy postgres StatefulSet (Pg 125–139)
 
-> [!WARNING]
-> **CONTEXT: `terminal`** — No VCF context needed. Doesn't matter which context you're currently in, just stay there.
+> Same place → Create New Instance
+
+| Step | Action |
+|------|--------|
+| 1 | Name: `postgres`, Image: `harbor-01a.vcf.lab/library/postgres:14-alpine` |
+| 2 | CPU `1000` millicores, Memory `512 MB`, Replicas `2` → Next |
+| 3 | Persistent Volume → Attach Volume: Name `storage`, Storage Class `vsan-default-storage-policy`, Capacity `5 GB`, ✓ Mount to Primary Container, Mount path `/var/lib/postgresql/data`, Sub Path `pgdata` → Save |
+| 4 | Runtime Configuration → env vars: `POSTGRES_DB=my_database`, `POSTGRES_USER=db_admin`, `POSTGRES_PASSWORD=VMware123!VMware123!`, `PGDATA=/var/lib/postgresql/data/pgdata` |
+| 5 | Load Balancer → Attach: Name `postgres-lb`, Port Name `tcp-5432`, TCP, Port `5432`, Target `5432`, ✓ Attach to Primary Container → Add → Save → Next |
+| 6 | **Download the YAML** → Create Container Instance |
+| 7 | Wait for **Ready** (guide: up to 5 min) → click `postgres` → 2 pods running → note LB **External IP** |
+
+### CLI: Verify postgres (Pg 140)
 
 ```bash
-# Pg 160 — Login to Harbor (admin / Harbor12345)
-docker login harbor-01a.site-a.vcf.lab
-
-# Pg 162 — Tag for Harbor
-docker tag \
-  vcf-automation-docker-dev-local.usw5.packages.broadcom.com/bitnami/opencart:4.0.1-1-debian-11-r66 \
-  harbor-01a.site-a.vcf.lab/opencart/opencart:4.0.1-1-debian-11-r66
-
-# Pg 163 — Push to Harbor
-docker push harbor-01a.site-a.vcf.lab/opencart/opencart:4.0.1-1-debian-11-r66
-
-
-# Pg 164 - View docker images
-docker image ls
+# Pg 140 — password: VMware123!VMware123!
+psql -h <postgres-LB-external-IP> -p 5432 -U db_admin -d my_database
+exit
 ```
+
 ---
 
-## Chapter 4 — vks-01 Cluster Manually (Pg 169–222)
+## Chapter 4 — vks-01 Cluster + Bookstore via Helm (Pg 144–182)
 
-**Goal:** Create VKS cluster, configure CLI, install packages, deploy OpenCart.
+**Goal:** Create vks-01 in the **prod** namespace via the LCI, configure CLI, install cert-manager + Istio add-ons via VCFA, deploy Bookstore with Helm.
 
-### GUI: VCFA — Create vks-01 Cluster (Pg 173–181)
+### GUI: vCenter LCI — Create vks-01 (Pg 144–156)
 
-> VCF Automation → Services (dev-xxxxx) → Kubernetes → Create
+> vc-wld01-a → Menu → Supervisor Management → Namespaces → **prod-xxxxx** → Resources tab → Kubernetes tile: Go To Service → Create
 
 | Step | Action |
 |------|--------|
 | 1 | Custom Configuration → Next |
-| 2 | Name: `vks-01`, Kubernetes release: **`v1.34.8+vmware.1-vkr.1`** — NOT the `v1.35.0+vmware.2-vkr.4` the guide names (its image is missing from the lab pods' content library, see warning below) |
-| 3 | Control Plane: 1 replica, `best-effort-small` |
-| 4 | Storage: `cluster-wld01-01a-storage-policy`, OS: `Photon` → Next |
-| 5 | Add Nodepool (keep defaults) → Next → Finish |
-| **6** | **⚠️ DOWNLOAD YAML** (click download arrow) — needed for ArgoCD! |
-| 7 | Finish → Wait for **Ready** status |
+| 2 | Name: `vks-01`; **latest Kubernetes release auto-selected** (v1.35.x); VM Class `best-effort-medium` |
+| 3 | Storage: Default Storage Class `vsan-default-storage-policy` → Next |
+| 4 | OS Image: **Ubuntu 24.04** → Next |
+| 5 | Nodepool → ⋮ edit → ✓ **Use Cluster Autoscaler**, Min `2`, Max `3`, OS Image **Ubuntu 24.04** → Next → Finish |
+| 6 | Next → review full YAML |
+| **7** | **⚠️ DOWNLOAD the manifest — CRITICAL**, needed for the Argo CD chapter |
+| 8 | Finish → wait for **Available** (guide: ~5 min; Ready = CP up, workers may still be configuring — worker must be up before app deploy) |
 
-> ⚠️ **Why not the guide's 1.35 release (verified Jul 2026):** the lab guide (Pg 175) says select `v1.35.0+vmware.2-vkr.4`, but that release has no node image in the lab pods' content library — it fails at Review and Confirm with `admission webhook "tkr-resolver-cluster-webhook" ... Missing compatible KR/OSImage`. Syncing the CL doesn't fix it (catalog syncs, but the image never ingests into `kubectl get osimage`, and the webhook rejects before on-demand download can trigger). **`v1.34.8+vmware.1-vkr.1` has its image and deploys cleanly** — and every downstream command (package repo supports K8s 1.32–1.35, Prometheus, Telegraf, OpenCart, ArgoCD) works verbatim on it. If it's ever missing too, select the newest release shown by `kubectl get osimage` from the `vcfa:dev-xxxxx` context (don't trust `kubectl get kr` — it lists releases that have no image).
-
-> ⚠️ **WAIT ~10 MINUTES** — vks-01 takes at least 10 minutes to fully deploy. Control Plane comes up first, but worker nodes take longer. Do not proceed with CLI configuration until status is **Ready** and both nodes are available.
-
-### CLI: Configure CLI for vks-01 (Pg 184–193)
+### CLI: Configure CLI for vks-01 (Pg 157–167)
 
 > [!WARNING]
-> **CONTEXT: `vcfa:dev-xxxxx`** — Must be in the dev namespace CCI context.
+> **CONTEXT: `vcfa:prod-xxxxx`** — vks-01 lives in **prod**, not dev.
 
 ```bash
-# Pg 184-185 — Confirm context
-Is cluster ready ?
-  vcf cluster list
+# Pg 157 — List contexts
 vcf context list
-vcf context use vcfa:dev-xxxxx:default-project
-# Token if prompted: Gzy8gHueTtYu200DUJfx3asdZ7NWveuc (per-pod — get yours from the VS Code token file)
 
-# Pg 186-188 — Register vks-01 and get kubeconfig
+# Pg 158 — Switch to prod namespace (token: ~/Downloads/my-token.txt if prompted)
+vcf context use vcfa:prod-xxxxx:default-project
+
+# Pg 159 — Only proceed when CP shows 1/1
 vcf cluster list
+
+# Pg 160 — Register JWT authenticator (Pinniped/SSO login for the cluster)
 vcf cluster register-vcfa-jwt-authenticator vks-01
+
+# Pg 161 — Export kubeconfig
 vcf cluster kubeconfig get vks-01 --export-file ~/.kube/config
 
-# Pg 189 — Verify kubeconfig has vks-01
+# Pg 162 — Find the exact context name
 cat ~/.kube/config | grep vks-01
 
-# Pg 190 — Create context (does NOT auto-switch!)
+# Pg 163 — Create context (does NOT auto-switch!) — type: cloud-consumption-interface
 vcf context create vks-01 \
   --kubeconfig ~/.kube/config \
-  --kubecontext vcf-cli-vks-01-dev-xxxxx@vks-01-dev-xxxxx
-# → Select: cloud-consumption-interface
+  --kubecontext vcf-cli-vks-01-prod-xxxxx@vks-01-prod-xxxxx
+# API token again from ~/Downloads/my-token.txt
 
-# Pg 191-192 — Refresh and verify
+# Pg 164-165 — Refresh and list
 vcf context refresh
 vcf context list
 
-# Pg 193 — NOW switch to vks-01
+# Pg 166 — NOW switch to vks-01
 vcf context use vks-01
+# ("failed to discover plugin sources" log is safe to ignore)
 ```
 
 > [!WARNING]
 > **CONTEXT: `vks-01`** — All commands below run against the vks-01 guest cluster.
 
-### CLI: Install Packages on vks-01 (Pg 194–204)
-
 ```bash
-# Pg 194 — Verify nodes are Ready
-kubectl get node
-
-# Pg 195 — Add package repo (supports cluster K8s 1.32–1.35)
-vcf package repository add default-repo \
-  --url projects.packages.broadcom.com/vsphere/supervisor/vks-standard-packages/3.6.0-20260211/vks-standard-packages:3.6.0-20260211 \
-  -n tkg-system
-
-# Pg 196 — List available packages
-vcf package available list -n tkg-system
-
-# INSTRUCTOR CHECK — verify the guide's pinned versions exist in the repo
-# before students hit the install steps. Package name is a positional arg
-# (no -p flag on list; -p belongs to install):
-vcf package available list prometheus.kubernetes.vmware.com -n tkg-system
-# → expect 3.5.0+vmware.1-vks.2 in the VERSION column (lab-verified on 1.34.8)
-vcf package available list telegraf.kubernetes.vmware.com -n tkg-system
-# → expect 1.37.1+vmware.1-vks.1 in the VERSION column (lab-verified on 1.34.8)
-# If a pinned version is ever missing, install the newest version listed instead.
-
-# Pg 197 — Change to Lab directory
-cd Documents/Lab
-
-# Pg 198-200 — Install Prometheus
-# If the pinned version is rejected, run `vcf package available list prometheus.kubernetes.vmware.com -n tkg-system`
-# and install the newest version listed
-kubectl create ns prometheus-installed
-vcf package install prometheus \
-  -p prometheus.kubernetes.vmware.com \
-  --values-file prometheus-data-values.yaml \
-  -n prometheus-installed \
-  -v 3.5.0+vmware.1-vks.2
-
-# Pg 201 — Verify Prometheus pods
-kubectl get pods -n tanzu-system-monitoring
-
-# Pg 202-203 — Install Telegraf
-kubectl create ns telegraf-installed
-vcf package install telegraf \
-  -p telegraf.kubernetes.vmware.com \
-  --values-file telegraf-data-values.yaml \
-  -n telegraf-installed \
-  -v 1.37.1+vmware.1-vks.1
-
-# Pg 204 — Verify Telegraf pods
-kubectl get pods -n tanzu-system-telegraf
-
-# Verify installed packages (not in guide) — prometheus + telegraf should show
-# Reconcile succeeded, alongside the VMware-managed core packages in vmware-system-tkg
-vcf package installed list -A
-```
-
-### GUI: Edit opencart.yaml with IPs (Pg 211–213)
-
-> Open `opencart.yaml` in VS Code
-
-| Field | Replace with |
-|-------|--------------|
-| `OPENCART_DATABASE_HOST` | MySQL LB External IP (from Chapter 2) |
-| `OPENCART_HOST` | OpenCart LB External IP (from step below) |
-| `livenessProbe.httpHeaders` | OpenCart LB External IP |
-| `readinessProbe.httpHeaders` | OpenCart LB External IP |
-
-→ Save the file.
-
-### CLI: Deploy OpenCart on vks-01 (Pg 205–222)
-
-> [!WARNING]
-> **CONTEXT: `vks-01`** — Must be in the vks-01 cluster CCI context.
-
-```bash
-# Pg 205-206 — Create and label namespace
-kubectl create namespace opencart
-kubectl label ns opencart pod-security.kubernetes.io/enforce=privileged
-
-# Pg 208-209 — Deploy LB and get External IP
-kubectl apply -f opencart-lb.yaml -n opencart
-kubectl get service -n opencart -w
-# → Wait for EXTERNAL-IP, then Ctrl+C
-# → Use this IP to update opencart.yaml (see GUI step above)
-
-# Pg 214-215 — Deploy app (after editing opencart.yaml with IPs)
-kubectl apply -f opencart.yaml -n opencart
-kubectl get all -n opencart
-```
-
-> ⚠️ **WAIT ~5 MINUTES** — OpenCart takes around 5 minutes to become Ready due to its readiness probes. `kubectl get all -n opencart` will show pods not yet Ready during this time — this is normal.
-
-### GUI: VCFA — Scale vks-01 Nodepool (Pg 219–220)
-
-> VCF Automation → Kubernetes → vks-01
-
-| Step | Action |
-|------|--------|
-| 1 | Scroll to Nodepool → Edit |
-| 2 | Replicas: **2** → Save |
-
-```bash
-# Pg 222 — Verify new node
+# Pg 167 — Only proceed when all nodes Ready
 kubectl get nodes
 ```
 
+### GUI: VCFA — Install Add-ons (Pg 168–175)
+
+> VCF Automation (acme-east-a) → Manage & Govern → Kubernetes Management → `vks-01` → **Add-ons** tab → Available Add-ons
+
+| Step | Action |
+|------|--------|
+| 1 | **cert-manager** card → Install Add-on → latest compatible version → Install Add-on → wait for complete |
+| 2 | **Istio** card → Install Add-on → Package name `vks-01-istio`, latest compatible version → Install Add-on → wait for complete |
+
+> 💡 This is the new **VKS Add-ons** flow (replaces `vcf package repository add` + `vcf package install` from the 9.0 lab).
+
+### CLI: Deploy Bookstore with Helm (Pg 176–180)
+
+```bash
+# Pg 176
+cd ~/Desktop/bookstore-app/
+
+# Pg 177 — Namespace + Helm ownership labels
+kubectl create namespace bookstore
+kubectl label namespace bookstore app.kubernetes.io/managed-by=Helm
+kubectl annotate namespace bookstore meta.helm.sh/release-name=demo
+kubectl annotate namespace bookstore meta.helm.sh/release-namespace=bookstore
+
+# Pg 178 — Harbor pull secret
+kubectl create secret docker-registry harbor-registry-secret \
+  --docker-server=harbor-01a.vcf.lab \
+  --docker-username=admin \
+  --docker-password=Harbor123! \
+  -n bookstore
+
+# Pg 179 — Deploy
+helm install demo ./helm/demo-suite -f ./helm/demo-suite/values-lab.yaml -n bookstore
+
+# Pg 180 — Verify; note the istio gateway EXTERNAL-IP for the DNS step
+kubectl get all -n bookstore
+```
+
+### GUI: DNS Record + Verify (Pg 181–182)
+
+> Firefox → HOL Admin bookmarks → **Technitium DNS Server** → login `admin` / `VMware123!VMware123!`
+
+| Step | Action |
+|------|--------|
+| 1 | Edit/Add record: Name `bookstore`, IPv4 = istio gateway External IP from Pg 180 |
+| 2 | Browse `https://bookstore.vcf.lab` → Advanced → Proceed (self-signed) → app up |
+
 ---
 
-## Chapter 5 — vks-01 Cluster Automated with ArgoCD (Pg 229–292)
+## Chapter 5 — Day 2 Operations (Pg 186–200)
 
-**Goal:** Create test namespace, deploy ArgoCD, set up GitOps workflow.
+**Goal:** Manually scale the pre-existing `vks-prod` cluster, review monitoring in VCFA and VCF Operations. GUI only.
 
-### GUI: VCFA — Create Test Namespace (Pg 232–234)
+### GUI: VCFA — Scale vks-prod (Pg 186–192)
 
-> VCF Automation → Manage & Govern → Projects → default-project → Namespaces → New Namespace
+> VCF Automation (acme-east-a) → Build & Deploy → namespace `prod-xxxxx` → Kubernetes → **vks-prod**
+
+| Step | Action |
+|------|--------|
+| 1 | Node pools → expand → Edit → Replicas **2** → Save (guide: ~3 min) |
+| 2 | Build & Deploy → Kubernetes → `vks-01` → **Monitor** tab → review charts |
+
+### GUI: VCF Operations (Pg 193–200)
+
+> Region A → VMware Cloud Foundation Operations → Local Account `admin` / `VMware123!VMware123!`
+
+| Step | Action |
+|------|--------|
+| 1 | Search `supervisor` → `supervisor-wld-a` (vSphere Supervisor) → Topology tab → Metrics tab: add CPU Usage (Cores) + Memory Usage (GB) |
+| 2 | Search `vks-01` → (VKS Cluster) → Topology tab → Metrics tab: same two charts |
+
+---
+
+## Chapter 6 — Continuous Delivery with Argo CD (Pg 204–264)
+
+**Goal:** Create test namespace, deploy an Argo CD instance, GitOps-deploy the infra (vks-argo cluster + add-ons) and the Bookstore app from GitLab, then demo auto-sync by enabling Elasticsearch.
+
+### GUI: VCFA — Create Test Namespace (Pg 204–208)
+
+> VCF Automation (acme-east-a) → Manage & Govern → Projects → default-project → Namespaces → New Namespace
 
 | Field | Value |
 |-------|-------|
 | Name | `test` |
 | Namespace class | `medium` |
-| Region | `us-west` |
-| VPC | `us-west-Default-VPC` |
-| Zone | ✓ `z-wld-a` |
+| Region | `us-east-a` |
+| Zone | `z-wld-a` |
+| Networking | Shared VPC, VPC `default-us-east-a` |
 
-→ Wait for **Active** status. Note the unique namespace name (e.g., `test-xxxxx`).
+→ Wait for **Active**. Note the unique name `test-xxxxx`.
 
-### CLI: Create Supervisor Context (Pg 235–236)
+### CLI: Supervisor Context + Argo CD Instance (Pg 209–217)
 
 > [!WARNING]
-> **CONTEXT: `vks-01`** — Still in the vks-01 cluster. `create` below does NOT auto-switch.
+> `vcf context create` does NOT auto-switch — you stay in your current context until `vcf context use`.
 
 ```bash
-# Pg 235 — Create supervisor context (does NOT auto-switch!)
+# Pg 209 — Create supervisor context (password: VMware123!VMware123!)
 vcf context create supervisor \
-  --endpoint 10.1.0.6 \
+  --endpoint 10.1.8.132 \
   --username administrator@wld.sso \
   --insecure-skip-tls-verify \
   --auth-type basic
-# Password: VMware123!VMware123!
 
-# Pg 236 — Switch to test namespace (interactive menu)
+# Pg 210 — Switch (interactive) → select supervisor:test-xxxxx
 vcf context use
-# → Select: supervisor:test-xxxxx
 ```
 
 > [!WARNING]
 > **CONTEXT: `supervisor:test-xxxxx`** — All commands below run against the test namespace on Supervisor.
 
-### CLI: Deploy ArgoCD Instance (Pg 237–245)
-
 ```bash
-# Pg 239-240 — Deploy ArgoCD
-kubectl apply -f argocd-instance.yaml
-kubectl get pod
-# → Pods may be Pending...
+# Pg 211 — Check available Argo CD version
+kubectl explain argocd.spec.version
+
+# Pg 212 — Create instance manifest (edit test-xxxxx!)
+nano ~/Downloads/argocd-instance.yaml
 ```
 
-### GUI: vCenter — Increase CPU Limit (Pg 241–242)
-
-> vc-wld01-a → Menu → Supervisor Management → Namespaces → test-xxxxx
-
-| Step | Action |
-|------|--------|
-| 1 | Summary tab → Capacity and Usage → Edit Limits |
-| 2 | CPU: **25 GHz** → OK |
+```yaml
+apiVersion: argocd-service.vsphere.vmware.com/v1alpha1
+kind: ArgoCD
+metadata:
+  name: argocd-instance-01
+  namespace: test-xxxxx
+spec:
+  version: 3.0.19+vmware.1-vks.1
+```
 
 ```bash
-# Pg 243 — Verify pods now running
-kubectl get pod
+# Pg 213 — Deploy
+kubectl apply -f ~/Downloads/argocd-instance.yaml
 
-# Pg 244 — Get admin password
+# Pg 214 — Watch until Running/Completed + 1/1 (guide: ~1 min), Ctrl+C to exit
+watch kubectl get pods
+
+# Pg 216 — Initial admin password — copy it!
 kubectl get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d
-# → Copy this password!
 
-# Pg 245 — Get ArgoCD external IP
+# Pg 217 — External IP of argocd-server
 kubectl get service
-# → Note the EXTERNAL-IP for argocd-server
 ```
 
-### CLI: Log Into ArgoCD & Register Clusters (Pg 246–250)
+> 💡 Unlike the 9.0 lab, the 9.1 guide has **no CPU-limit bump** on the test namespace — pods are expected to schedule directly. *(verify in lab: if Argo CD pods stay Pending, check namespace CPU limits in vCenter as per the old lab)*
+
+### CLI: Argo CD Login + Register Supervisor (Pg 218–221)
 
 ```bash
-# Pg 246 — Login to ArgoCD CLI
-argocd login 10.1.11.x
-# → Username: admin
-# → Password: (from secret above)
+# Pg 218 — Login (admin / password from secret; y to accept cert)
+argocd login 10.1.x.x
 
-# Pg 247 — Change password to VMware123!VMware123!
+# Pg 219 — Change password to VMware123!VMware123!
 argocd account update-password
 
-# Pg 249 — Register Supervisor as ArgoCD destination
-argocd cluster add supervisor \
-  --namespace test-xxxxx \
-  --namespace dev-xxxxx \
-  --kubeconfig ~/.kube/config
+# Pg 220 — Confirm your namespace names
+vcf context list
+
+# Pg 221 — Register Supervisor as destination (test namespace only; y to create SA)
+argocd cluster add supervisor --namespace test-xxxxx --kubeconfig ~/.kube/config
 ```
 
-### GUI: Prepare YAMLs & Upload to Gitea (Pg 254–265)
+### GUI: Verify in Argo CD UI (Pg 222–223)
 
-#### Edit Downloaded YAMLs (Pg 254–257)
+> `https://<argocd-external-IP>` → login `admin` / `VMware123!VMware123!` → Settings → Clusters → `supervisor` shows test namespace
 
-| Step | Action |
-|------|--------|
-| 1 | Extract `create-tkg-cluster-yaml-files.zip` |
-| 2 | Extract `create-vm-yaml-files.zip` |
-| 3 | Open each file (4 total), **remove the `namespace:` line**, save |
-| 4 | In `vks-01.yaml`: change topology **class to `builtin-generic-v3.6.0`** and **`version:` to `v1.34.8---vmware.1-vkr.1`** (same release deployed in dev; `---` encodes `+` in these YAMLs). Downloaded YAML may carry older values (e.g. class v3.3.0) — stale values make ArgoCD hit the same tkr-resolver error and the app sticks out-of-sync. A corrected copy is in this repo: `manifests/vks-01.yaml` |
+### GUI: Prepare YAMLs & Upload to GitLab (Pg 224–236)
 
-#### Upload to Gitea (Pg 258–261)
-
-> http://10.1.10.130:3000 → Login: holuser / VMware123!VMware123! → argocd repo
+> HOL Admin bookmarks → **Gitlab** → login `root` / `VMware123!VMware123!` → Projects → `argocd` repo, `bookstore-infra` folder
 
 | Step | Action |
 |------|--------|
-| 1 | Open `opencart-infra` folder |
-| 2 | Add File → Upload File |
-| 3 | Upload all 4 files (3 VM + 1 VKS) → Commit |
-| 4 | Click `argocd` root → Code → Copy git URL: `http://10.1.10.130:3000/holuser/argocd.git` |
+| 1 | Files app: extract `create-tkg-cluster-yaml-files` zip (downloaded in Ch. 4) |
+| 2 | Open `vks-01.yaml` in Mousepad (or VS Code) |
+| 3 | Search → Find and Replace: rename cluster `vks-01` → `vks-argo` *(inferred from later steps — the Argo-created cluster is named vks-argo; verify in lab)* |
+| 4 | **Remove the `namespace: prod-xxxxx` line** |
+| 5 | Replace vmClass `best-effort-medium` → **`best-effort-large`** |
+| 6 | File → Save As → **`vks-argo.yaml`** |
+| 7 | GitLab → `bookstore-infra` → + → Upload File → `vks-argo.yaml` → commit to main |
+| 8 | Edit `Desktop/bookstore-infra/addoninstall-cert-manager.yaml`: replace `<SUPERVISOR_NAMESPACE>` with `test-xxxxx` → Save |
+| 9 | Edit `Desktop/bookstore-infra/addoninstall-istio.yaml`: replace `<SUPERVISOR_NAMESPACE>` with `test-xxxxx` → Save |
+| 10 | Upload both addon YAMLs to `bookstore-infra` in GitLab → commit |
+| 11 | Repo root → Code → copy HTTPS URL: `https://gitlab.vcf.lab/root/argocd.git` |
 
-#### Create ArgoCD App in UI (Pg 262–265)
-
-> ArgoCD UI (External IP from earlier) → Login: admin
-
-| Step | Action |
-|------|--------|
-| 1 | Create Application |
-| 2 | Name: `opencart-infra` |
-| 3 | Project: `default` |
-| 4 | Sync Policy: `Automatic` |
-| 5 | Repository URL: `http://10.1.10.130:3000/holuser/argocd.git` |
-| 6 | Path: `opencart-infra` |
-| 7 | Cluster URL: `https://10.1.0.6:443` |
-| 8 | Namespace: `test-xxxxx` → Create |
-
-→ Wait for App Health: **Healthy**
-
-> ⚠️ **WAIT ~10 MINUTES** — ArgoCD is deploying vks-01 in `test-xxxxx` via GitOps. The cluster takes at least 10 minutes to provision. Wait for `opencart-infra` App Health to show **Healthy** before proceeding.
-
-### GUI: VCFA — Download vks-01 Kubeconfig (Pg 270)
-
-> ⚠️ **IMPORTANT** — Download the kubeconfig from the **test-xxxxx** namespace (not dev-xxxxx). Both namespaces have a vks-01 cluster. You need the one ArgoCD just created in test.
-
-> VCF Automation → Kubernetes (test-xxxxx) → vks-01 → ⋮ → Download kubeconfig file
-
-### CLI: Register vks-01 in ArgoCD (Pg 271–273)
+### CLI + GUI: bookstore-infra App (Pg 237–244)
 
 ```bash
-# Pg 271 — Find downloaded kubeconfig
+# Pg 237 — Add repo to Argo CD
+argocd repo add https://gitlab.vcf.lab/root/argocd.git \
+  --name bookstore-infra --project default --upsert --insecure-skip-server-verification
+```
+
+> Argo CD UI → Settings → Repositories: verify → Applications → Create Application
+
+| Field | Value |
+|-------|-------|
+| Application Name | `bookstore-infra` |
+| Project | `default` |
+| Sync Policy | `Automatic` |
+| Repository URL | `https://gitlab.vcf.lab/root/argocd.git` |
+| Path | `bookstore-infra` |
+| Cluster URL | `https://10.1.8.132:443` (Supervisor) |
+| Namespace | `test-xxxxx` |
+
+→ Create → click the tile → wait for **Healthy**.
+
+> ⚠️ **WAIT ~10 MINUTES** (per guide) — this replays chapter 4 via GitOps: full VKS cluster (`vks-argo`) + cert-manager + Istio add-ons. Use Refresh to check sync status.
+
+### CLI: Register vks-argo in Argo CD (Pg 245–249)
+
+> VCF Automation → Build & Deploy → namespace **test-xxxxx** → Kubernetes → ⋮ next to cluster → **Download kubeconfig file**
+
+```bash
+# Pg 247
 cd ~/Downloads
-ls | grep vks-01-kubeconfig.yaml
+ls | grep vks-argo-kubeconfig.yaml
 
-# Pg 272 — Get context name
-kubectl --kubeconfig vks-01-kubeconfig.yaml config current-context
+# Pg 248 — Get context name
+kubectl --kubeconfig vks-argo-kubeconfig.yaml config current-context
 
-# Pg 273 — Register vks-01 with ArgoCD
-argocd cluster add vks-01-admin@vks-01 vks-01 \
-  --kubeconfig vks-01-kubeconfig.yaml
-# → Note the cluster IP — needed for YAML verification below
+# Pg 249 — Register with Argo CD (y to create SA) — NOTE THE CLUSTER IP in the output!
+argocd cluster add vks-argo-admin@vks-argo vks-argo --kubeconfig vks-argo-kubeconfig.yaml
 ```
 
-### Deploy OpenCart via ArgoCD (Pg 274–289)
-
-This section follows the exact lab page order — check LB yaml, create LB app, get IPs, edit opencart.yaml in Gitea, check app yaml, create app, verify.
-
-#### Step 1: Verify argo-opencart-lb.yaml (Pg 274)
-
-> Open `argo-opencart-lb.yaml` in VS Code (in `~/Documents/Lab`)
-
-| Check | Action |
-|-------|--------|
-| Server IP | Must match vks-01 cluster IP from Pg 273 |
-| If different | Update the IP and **Save** |
-
-#### Step 2: Create opencart-lb App (Pg 275–277)
+### CLI: Deploy Bookstore App via Argo CD (Pg 251–254)
 
 ```bash
-# Pg 275 — Go to Lab directory
-cd ~/Documents/Lab
+# Pg 251 — Add app repo
+argocd repo add https://gitlab.vcf.lab/root/bookstore-app.git \
+  --name bookstore-app --project default --upsert --insecure-skip-server-verification
 
-# Pg 276 — Create LB app
-argocd app create opencart-lb --file argo-opencart-lb.yaml
+# Pg 252 — Create app — replace 10.1.9.10 with YOUR vks-argo cluster IP from Pg 249
+argocd app create bookstore-lab \
+  --repo https://gitlab.vcf.lab/root/bookstore-app.git \
+  --path kubernetes/overlays/lab \
+  --dest-server https://10.1.9.10:6443 \
+  --dest-namespace bookstore \
+  --sync-policy automated \
+  --auto-prune \
+  --self-heal
 
-# Pg 277 — Check status
-argocd app get opencart-lb
-```
-
-#### Step 3: Get the Two IPs You Need (Pg 278–279)
-
-```bash
-# Pg 278 — Get DB VM External IP (MySQL LB)
-kubectl get service
+# Pg 253 — Status
+argocd app get bookstore-lab
 ```
 
 > [!WARNING]
-> **CONTEXT: `supervisor:test-xxxxx`** — You must be in the test namespace for this command. If not, run `vcf context use` and select `supervisor:test-xxxxx`.
+> **CONTEXT: `supervisor:test-xxxxx`** for the next command (run `vcf context use` if unsure) — the kubeconfig flag targets vks-argo directly.
 
 ```bash
-# Pg 279 — Get OpenCart LB External IP (from inside vks-01)
-kubectl get service -n opencart --kubeconfig ~/Downloads/vks-01-kubeconfig.yaml
+# Pg 254 — Wait Healthy, then note demo-gateway-istio EXTERNAL-IP
+kubectl get service -n bookstore --kubeconfig=vks-argo-kubeconfig.yaml
 ```
 
-→ You now have two IPs:
-- **MySQL LB IP** — from `kubectl get service` (the oc-mysql load balancer in test-xxxxx)
-- **OpenCart LB IP** — from `kubectl get service -n opencart --kubeconfig ~/Downloads/vks-01-kubeconfig.yaml` (the opencart LB inside vks-01)
-
-#### Step 4: Edit opencart.yaml in Gitea (Pg 280–282)
-
-> Gitea → argocd repo → `opencart-app` folder → `opencart.yaml` → **Edit**
-
-| # | Field to find | Replace with |
-|---|---------------|--------------|
-| 1 | `OPENCART_DATABASE_HOST` | **MySQL LB IP** (from Pg 278) |
-| 2 | `OPENCART_HOST` | **OpenCart LB IP** (from Pg 279) |
-| 3 | `livenessProbe` → `httpHeaders` value | **OpenCart LB IP** |
-| 4 | `readinessProbe` → `httpHeaders` value | **OpenCart LB IP** |
-
-> ⚠️ **WARNING** — All **4** IPs must be changed to correct values, otherwise the application will not work.
-
-→ Scroll down → Add commit message → **Commit Changes**
-
-#### Step 5: Verify argo-opencart-app.yaml (Pg 283)
-
-> Open `argo-opencart-app.yaml` in VS Code (in `~/Documents/Lab`)
-
-| Check | Action |
-|-------|--------|
-| Server IP | Must match vks-01 cluster IP from Pg 273 |
-| If different | Update the IP and **Save** |
-
-#### Step 6: Create opencart-app & Verify (Pg 284–289)
-
-```bash
-# Pg 284 — Create app (from ~/Documents/Lab)
-argocd app create opencart-app --file argo-opencart-app.yaml
-
-# Pg 285 — Check status
-argocd app get opencart-app
-```
-
-**GUI verification (Pg 286–289):**
+### GUI: DNS + Verify + GitOps Demo (Pg 255–264)
 
 | Pg | Action |
 |----|--------|
-| 286 | Return to ArgoCD UI → Verify all **3** applications are **Healthy** |
-| 287 | Click into `opencart-lb` |
-| 288 | Click on `my-open-cart-lb` service → note the External IP |
-| 289 | Browse to that IP → verify OpenCart application is available |
-
-### GUI: GitOps Demo — Scale via Git (Pg 290–292)
-
-> Gitea → argocd → opencart-infra → `vks-01.yaml` → Edit
-
-| Change | Value |
-|--------|-------|
-| Worker node replicas | `2` |
-
-→ Commit Changes
-
-**Verify in ArgoCD (Pg 291–292):**
-
-| Step | Action |
-|------|--------|
-| 1 | Return to ArgoCD UI → Click `opencart-infra` |
-| 2 | App Health changes to **Progressing** (hit Refresh if needed) |
-| 3 | Click **Details** → **Events** to see what triggered the sync |
-| 4 | Wait for **Healthy** — new node visible in VCF Automation and vSphere under test namespace |
+| 255 | Technitium → Zones → `vcf.lab` → Add Record: Name `bookstore-test`, IPv4 = gateway IP → Save |
+| 256 | Browse `https://bookstore-test.vcf.lab` → accept risk → app up |
+| 257 | Search Products → `shakespere` → **no results** (Elasticsearch off) |
+| 258–259 | GitLab → `bookstore-app/kubernetes/overlays/lab/configmap-patch.yaml` → Edit single file → **uncomment line 11 (`ES_URL: "http://..."`)**, match indentation → Commit |
+| 260–261 | Same folder → `kustomization.yaml` → Edit: **delete/comment the two patch sections (rows 48–59)**, **uncomment `- path: elasticsearch-patch.yaml` (row 61)**, match indentation → Commit |
+| 262–263 | Argo CD UI → `bookstore-lab` → Health **Progressing** (Refresh if needed) → Details → Events shows the sync trigger |
+| 264 | Back to app → search `shakespere` again → **results returned** |
 
 ---
 
@@ -680,32 +645,70 @@ argocd app get opencart-app
 | To get here... | Run... |
 |----------------|--------|
 | `vcfa:dev-xxxxx` | `vcf context use vcfa:dev-xxxxx:default-project` |
+| `vcfa:prod-xxxxx` | `vcf context use vcfa:prod-xxxxx:default-project` |
 | `vks-01` | `vcf context use vks-01` |
-| `supervisor:test-xxxxx` | `vcf context use supervisor:test-xxxxx` |
-| ArgoCD CLI | `argocd login <IP>` |
+| `supervisor:test-xxxxx` | `vcf context use` → select `supervisor:test-xxxxx` |
+| Argo CD CLI | `argocd login <argocd-external-IP>` |
+| vks-argo | no context — always `--kubeconfig ~/Downloads/vks-argo-kubeconfig.yaml` |
 
 ### Critical "Don't Forget" Items
 
 | Pg | Item |
 |----|------|
-| 39 | Namespace storage: **500 GB** (not MB!) |
-| 152 | Download VM YAMLs |
-| 180 | Download vks-01.yaml |
-| 242 | Test namespace CPU: **25 GHz** |
-| 254-257 | Remove `namespace:` lines from YAMLs; `vks-01.yaml` class → `builtin-generic-v3.6.0` |
-| 211-213 | Edit `opencart.yaml` with correct IPs (manual deploy — VS Code) |
-| 274, 283 | Verify Server IP in `argo-opencart-lb.yaml` and `argo-opencart-app.yaml` |
-| 278 | Context must be `test-xxxxx` when getting DB VM IP |
-| 280-282 | Edit `opencart.yaml` with correct IPs (ArgoCD deploy — Gitea) |
+| 34 | Namespace class storage: **400 GB — GB not MB!** |
+| 42 | Don't delete the API token — value only in `~/Downloads/my-token.txt` |
+| 99 | Download cli-vm YAMLs |
+| 155 | **Download vks-01 cluster YAML — needed for Argo CD chapter** |
+| 158 | vks-01 lives in **prod-xxxxx**, not dev |
+| 229–230 | vks-argo.yaml: remove `namespace:` line, vmClass → `best-effort-large`, rename → vks-argo |
+| 232–233 | addoninstall YAMLs: `<SUPERVISOR_NAMESPACE>` → `test-xxxxx` |
+| 249 | Note vks-argo cluster IP from `argocd cluster add` output |
+| 252 | Replace `10.1.9.10` with your vks-argo IP |
+| 254 | Context must be `supervisor:test-xxxxx` when getting the gateway IP |
+| 258–261 | Elasticsearch enable: 2 GitLab edits (configmap-patch.yaml + kustomization.yaml) |
 
 ### Credentials
 
 | System | Username | Password |
 |--------|----------|----------|
-| vCenter | administrator@wld.sso | VMware123!VMware123! |
-| VCFA | broadcomadmin | VMware123!VMware123! |
+| vCenter (vc-wld01-a) | administrator@wld.sso | VMware123!VMware123! |
+| VCFA org | acme-east-a | VMware123!VMware123! |
 | VCFA Provider | admin | VMware123!VMware123! |
-| Harbor | admin | Harbor12345 |
-| Gitea | holuser | VMware123!VMware123! |
-| ArgoCD | admin | (from secret, then VMware123!VMware123!) |
-| API Token | — | per-pod: `cat ~/Documents/Lab/token` |
+| Harbor | admin | **Harbor123!** |
+| GitLab | root | VMware123!VMware123! |
+| VCF Operations | admin (Local Account) | VMware123!VMware123! |
+| Technitium DNS | admin | VMware123!VMware123! |
+| Argo CD | admin | (from secret, then VMware123!VMware123!) |
+| cli-vm (ssh) | devops | DevOps123 |
+| postgres | db_admin | VMware123!VMware123! |
+| API Token | — | `cat ~/Downloads/my-token.txt` |
+
+### 9.0 → 9.1 Lab Differences (for instructors who taught the old lab)
+
+| Area | 9.0 lab | 9.1 lab |
+|------|---------|---------|
+| Org / login | broadcom / broadcomadmin | **acme-east-a** |
+| Region / VPC | us-west / us-west-Default-VPC | **us-east-a / default-us-east-a (Shared VPC)** |
+| Storage class | cluster-wld01-01a-storage-policy | **vsan-default-storage-policy** |
+| App | OpenCart (MySQL VM + container) | **Bookstore** (Helm, Istio, Postgres/Redis/MinIO/Elasticsearch) |
+| Utility VM | oc-mysql (DB) | **cli-vm** (docker/kubectl toolbox) |
+| Container deploy | — | **new Container Service chapter (nginx + postgres via VCFA UI)** |
+| VKS update | 3.6.0 (`3.6.0+v1.35`) | **3.6.2 (`3.6.2+v1.35`)** |
+| Cluster creation | VCFA UI, dev namespace | **vCenter LCI, prod namespace**, Ubuntu 24.04, autoscaler 2–3 |
+| Packages | vcf package repository/install (Prometheus, Telegraf) | **VCFA Add-ons tab (cert-manager, Istio)** |
+| LCI | installed as a service | **enabled by default** |
+| ArgoCD service YAML | 1.0.1-24896502.yml | **supervisor-service-argocd-legacy-1.1.0-25100889.yml** (legacy flavour) |
+| ArgoCD instance | (unversioned in guide) | **spec.version 3.0.19+vmware.1-vks.1** |
+| Git server | Gitea (10.1.10.130:3000, holuser) | **GitLab (gitlab.vcf.lab, root)** |
+| Supervisor endpoint | 10.1.0.6 | **10.1.8.132** |
+| GitOps cluster | vks-01 (test ns) | **vks-argo** (test ns) |
+| GitOps demo change | scale worker replicas | **enable Elasticsearch via kustomize patches** |
+| Day 2 / monitoring | — | **new chapter: scale vks-prod + VCF Operations** |
+| Harbor password | Harbor12345 | **Harbor123!** |
+
+### 9.0 Warnings That Do NOT Carry Over (removed deliberately)
+
+- **No "skip the VKS install" trap** — 9.1 guide installs 3.6.2 and the cluster wizard auto-selects the latest release; the 9.0 issue of a missing 1.35 OS image in the content library has not been observed on 9.1 yet *(re-check on first lab run)*.
+- **No test-namespace CPU limit bump (25 GHz)** — not in the 9.1 guide.
+- **No 10-minute vks-01 wait** — 9.1 guide says ~5 min with autoscaler; workers may trail the CP.
+- **No opencart.yaml IP editing** — Bookstore uses Istio gateway + DNS records instead of baked-in IPs.

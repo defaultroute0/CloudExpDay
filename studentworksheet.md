@@ -1,47 +1,59 @@
-# VCF Field Demo Lab — Student Worksheet
+# VCF 9.1 Field Demo Lab — Student Worksheet
 
 Write down these values as you go. Fill in the 🔴 fields as you progress through the lab.
 
 ---
 
-## ⚠️ Known Issue — Creating the vks-01 Cluster (Module 4, Pg 175)
+## Environment Constants
 
-The Kubernetes release the guide tells you to select (`v1.35.0+vmware.2-vkr.4`) is missing its node image in this lab environment. If you select it, the **Review and Confirm** page shows a red error (`admission webhook "tkr-resolver-cluster-webhook..." denied the request: ... Missing compatible KR/OSImage`). Nothing deploys — nothing is broken.
-
-**To get past it:**
-
-**To get past it: select `v1.34.8+vmware.1-vkr.1` instead** (go back one step in the Create Cluster wizard). Then continue with the lab **exactly as written** — every later command (packages, Prometheus, Telegraf, OpenCart, ArgoCD) works unchanged on 1.34.
-
-If that release is also unavailable in your pod, run `kubectl get osimage` from the **`vcfa:dev-xxxxx`** context and select the **newest version listed** — anything 1.32 or newer works.
-
-**Later, in the ArgoCD chapter:** when you edit `vks-01.yaml` for Gitea, set `version:` to the **same release you selected above** (and class to `builtin-generic-v3.6.0`) — otherwise ArgoCD hits the same error when it creates the test-namespace cluster, where it shows up as an app stuck out-of-sync instead of a red banner.
+| # | What | Value |
+|---|------|-------|
+| 1 | Supervisor IP (Argo CD chapter endpoint / cluster URL) | `10.1.8.132` |
+| 2 | VCFA endpoint | `auto-a.site-a.vcf.lab` |
+| 3 | Harbor | `harbor-01a.vcf.lab` (admin / Harbor123!) |
+| 4 | GitLab | `https://gitlab.vcf.lab` (root / VMware123!VMware123!) |
+| 5 | API Token | `cat ~/Downloads/my-token.txt` — do NOT delete it in VCFA |
 
 ---
 
-## Supervisor
+## Namespaces (unique per pod — note yours!)
 
 | # | What | Your Value | How to Get It |
 |---|------|------------|---------------|
-| 1 | Supervisor IP | `10.1.0.6` | Already known |
+| 6 | Dev namespace | 🔴 `dev-_____` | VCFA UI → Projects → default-project → Namespaces (you create it, Module 2 Ch 2) |
+| 7 | Prod namespace (pre-created — vks-01 goes here) | 🔴 `prod-_____` | vCenter → Supervisor Management → Namespaces, or `vcf context list` |
+| 8 | Test namespace (Argo CD chapter) | 🔴 `test-_____` | VCFA UI → Projects → default-project → Namespaces (you create it, Module 3 Ch 6) |
 
 ---
 
-## Dev Namespace
+## Module 3 Ch 2–3 — VM + Containers (dev namespace)
 
 | # | What | Your Value | How to Get It |
 |---|------|------------|---------------|
-| 2 | Namespace name | 🔴 `dev-_____` | VCFA UI → Projects → default-project → Namespaces |
-| 3 | vks-01 cluster IP | 🔴 `_._._._` | No context needed: `kubectl config view --kubeconfig ~/.kube/config \| grep server` — or VCFA UI → dev-xxxxx → Kubernetes → vks-01 |
-| 4 | DB_HOST (oc-mysql VM LB — exists in supervisor dev-xxxxx namespace, not inside guest cluster) | 🔴 `_._._._` | VCFA UI → dev-xxxxx → Virtual Machine → oc-mysql → Network Service |
-| 5 | OPENCART_HOST (opencart LB svc inside vks-01 guest cluster) | 🔴 `_._._._` | Context: `vcf context use vks-01` then `kubectl get service -n opencart` |
+| 9 | cli-vm SSH LB External IP (ssh devops / DevOps123) | 🔴 `_._._._` | VCFA UI → dev-xxxxx → Network Service → Services |
+| 10 | nginx LB External IP | 🔴 `_._._._` | VCFA UI → dev-xxxxx → Container → nginx (browse http://IP) |
+| 11 | postgres LB External IP (psql -U db_admin -d my_database) | 🔴 `_._._._` | VCFA UI → dev-xxxxx → Container → postgres |
 
 ---
 
-## Test Namespace
+## Module 3 Ch 4 — vks-01 + Bookstore via Helm (prod namespace)
 
 | # | What | Your Value | How to Get It |
 |---|------|------------|---------------|
-| 6 | Namespace name | 🔴 `test-_____` | VCFA UI → Projects → default-project → Namespaces |
-| 7 | vks-01 cluster IP | 🔴 `_._._._` | No context needed: `kubectl config view --kubeconfig ~/Downloads/vks-01-kubeconfig.yaml \| grep server` — or VCFA UI → test-xxxxx → Kubernetes → vks-01 |
-| 8 | DB_HOST (oc-mysql VM LB — exists in supervisor test-xxxxx namespace, not inside guest cluster) | 🔴 `_._._._` | Context: `vcf context use supervisor:test-xxxxx` then `kubectl get service` — or VCFA UI → test-xxxxx → Virtual Machine → oc-mysql → Network Service |
-| 9 | OPENCART_HOST (opencart LB svc inside vks-01 guest cluster) | 🔴 `_._._._` | No context needed: `kubectl get service -n opencart --kubeconfig ~/Downloads/vks-01-kubeconfig.yaml` |
+| 12 | vks-01 kubecontext name (for `vcf context create vks-01`) | 🔴 `vcf-cli-vks-01-prod-_____@vks-01-prod-_____` | `cat ~/.kube/config \| grep vks-01` |
+| 13 | Bookstore Istio gateway External IP → DNS record `bookstore.vcf.lab` | 🔴 `_._._._` | Context `vks-01`: `kubectl get all -n bookstore` (demo-gateway-istio service) |
+
+⚠️ **CRITICAL:** Download the vks-01 cluster YAML at the Review step of the Create Cluster wizard (Pg 155) — the Argo CD chapter needs it.
+
+---
+
+## Module 3 Ch 6 — Argo CD (test namespace)
+
+| # | What | Your Value | How to Get It |
+|---|------|------------|---------------|
+| 14 | Argo CD initial admin password (then changed to VMware123!VMware123!) | 🔴 | Context `supervisor:test-xxxxx`: `kubectl get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' \| base64 -d` |
+| 15 | Argo CD server External IP (login + UI) | 🔴 `_._._._` | Context `supervisor:test-xxxxx`: `kubectl get service` |
+| 16 | vks-argo cluster IP (for `argocd app create --dest-server`) | 🔴 `_._._._` | Output of `argocd cluster add vks-argo-admin@vks-argo vks-argo --kubeconfig vks-argo-kubeconfig.yaml` |
+| 17 | Bookstore-test Istio gateway External IP → DNS record `bookstore-test.vcf.lab` | 🔴 `_._._._` | `kubectl get service -n bookstore --kubeconfig=~/Downloads/vks-argo-kubeconfig.yaml` (demo-gateway-istio) |
+
+**Remember the vks-argo.yaml edits before uploading to GitLab:** remove the `namespace:` line · vmClass `best-effort-medium` → `best-effort-large` · save as `vks-argo.yaml` · and in both addoninstall YAMLs replace `<SUPERVISOR_NAMESPACE>` with your `test-xxxxx`.
