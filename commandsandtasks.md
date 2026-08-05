@@ -2,7 +2,7 @@
 
 > **What this lab does:** Deploy the **Bookstore** application (Go frontend + PostgreSQL + Redis + MinIO + Elasticsearch, fronted by an Istio Gateway) on a VKS cluster — first manually with Helm in `prod-xxxxx`, then automated via Argo CD GitOps in `test-xxxxx`. Along the way: VM Service (cli-vm), Container Service (nginx + postgres), VKS 3.6.2 update, add-ons via VCF Automation, Day 2 ops in VCF Operations.
 
-> ⚠️ **Status: generated from the Aug 2026 scrape of the 9.1 lab guide (265 pages). Not yet lab-validated** — page-flow and commands are verbatim from the guide; items marked *(verify in lab)* are inferences. Timing/wait notes are only the ones the 9.1 guide itself states.
+> ⚠️ **Status: generated from the Aug 2026 scrape of the 9.1 lab guide (265 pages), cross-checked against the guide's screenshots (PDF). Not yet lab-validated** — remaining *(verify in lab)* items are noted inline. Timing/wait notes are only the ones the 9.1 guide itself states.
 
 ---
 
@@ -257,7 +257,7 @@ exit
 ### CLI: Push nginx to Harbor (Pg 106)
 
 > [!WARNING]
-> **CONTEXT: `terminal`** — the guide says "a new terminal session on the console VM". Docker was installed on **cli-vm** — if docker isn't on the console, ssh to cli-vm first *(verify in lab which host has the ghcr.io image pre-pulled)*.
+> **CONTEXT: `terminal`** — runs on the **console VM directly** (`holuser@console`, confirmed by the guide's screenshot) — docker is on the console with the ghcr.io image pre-pulled. No ssh to cli-vm needed.
 
 ```bash
 # Pg 106
@@ -545,10 +545,12 @@ argocd cluster add supervisor --namespace test-xxxxx --kubeconfig ~/.kube/config
 |------|--------|
 | 1 | Files app: extract `create-tkg-cluster-yaml-files` zip (downloaded in Ch. 4) |
 | 2 | Open `vks-01.yaml` in Mousepad (or VS Code) |
-| 3 | Search → Find and Replace: rename cluster `vks-01` → `vks-argo` *(inferred from later steps — the Argo-created cluster is named vks-argo; verify in lab)* |
-| 4 | **Remove the `namespace: prod-xxxxx` line** |
+| 3 | Search → Find and Replace: Search for `vks-01`, Replace with `vks-argo`, ✓ Replace all in Document (**2 matches**) → Replace All (confirmed by guide screenshot) |
+| 4 | **Remove the `namespace: prod-xxxxx` line** (line 5, under `metadata:`) |
 | 5 | Replace vmClass `best-effort-medium` → **`best-effort-large`** |
 | 6 | File → Save As → **`vks-argo.yaml`** |
+
+> 💡 Sanity-check values in the downloaded YAML (from the guide's screenshots): `apiVersion: cluster.x-k8s.io/v1beta2`, topology classRef `builtin-generic-v3.6.0` (namespace `vmware-system-vks-public`), `version: v1.35.5---vmware.1-vkr.1`, storageClass `vsan-default-storage-policy`. If ArgoCD later sticks out-of-sync on the cluster, compare these fields first (the 9.0 lab's equivalent failure mode was a stale class/version here).
 | 7 | GitLab → `bookstore-infra` → + → Upload File → `vks-argo.yaml` → commit to main |
 | 8 | Edit `Desktop/bookstore-infra/addoninstall-cert-manager.yaml`: replace `<SUPERVISOR_NAMESPACE>` with `test-xxxxx` → Save |
 | 9 | Edit `Desktop/bookstore-infra/addoninstall-istio.yaml`: replace `<SUPERVISOR_NAMESPACE>` with `test-xxxxx` → Save |
