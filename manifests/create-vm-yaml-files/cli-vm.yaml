@@ -2,7 +2,7 @@ apiVersion: vmoperator.vmware.com/v1alpha5
 kind: VirtualMachine
 metadata:
   name: cli-vm
-  namespace: dev-bnnj5
+#  namespace: dev-xxx
   labels:
     vm-selector: cli-vm
     vm-lb-7jp8: vm-lb-selector
