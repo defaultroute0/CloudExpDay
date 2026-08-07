@@ -210,6 +210,8 @@ LCI is **enabled by default in VCF 9.1**. If Resources tab doesn't load, refresh
 
 No actions. Architecture: Go web frontend + PostgreSQL + Redis + MinIO (+ optional Elasticsearch for search), images from regional Harbor, ingress via **Istio Gateway** (Network Service LB), stateful services on Volume Service PVs. Deployed first with **Helm**, then with **Argo CD**.
 
+> 📦 The app is public: **[github.com/tmm-demo-apps/bookstore-app](https://github.com/tmm-demo-apps/bookstore-app)** — source, the `helm/demo-suite` umbrella chart, and the kustomize manifests all live there (sibling repos: `reader-app`, `chatbot-app`; images on `ghcr.io/tmm-demo-apps`). Handy for demoing outside a lab pod. The pod's `values-lab.yaml` and `kubernetes/overlays/lab` are lab-local variants.
+
 ---
 
 ## Chapter 2 — Deploy cli-vm with VM Service (Pg 86–102)
@@ -403,7 +405,8 @@ kubectl create secret docker-registry harbor-registry-secret \
   --docker-password=Harbor123! \
   -n bookstore
 
-# Pg 179 — Deploy
+# Pg 179 — Deploy (chart source: github.com/tmm-demo-apps/bookstore-app → helm/demo-suite;
+# values-lab.yaml is a pod-local variant of the repo's values-harbor.yaml)
 helm install demo ./helm/demo-suite -f ./helm/demo-suite/values-lab.yaml -n bookstore
 
 # Pg 180 — Verify; note the istio gateway EXTERNAL-IP for the DNS step
@@ -549,13 +552,13 @@ argocd cluster add supervisor --namespace test-xxxxx --kubeconfig ~/.kube/config
 | 4 | **Remove the `namespace: prod-xxxxx` line** (line 5, under `metadata:`) |
 | 5 | Replace vmClass `best-effort-medium` → **`best-effort-large`** |
 | 6 | File → Save As → **`vks-argo.yaml`** |
-
-> 💡 Sanity-check values in the downloaded YAML (from the guide's screenshots): `apiVersion: cluster.x-k8s.io/v1beta2`, topology classRef `builtin-generic-v3.6.0` (namespace `vmware-system-vks-public`), `version: v1.35.5---vmware.1-vkr.1`, storageClass `vsan-default-storage-policy`. If ArgoCD later sticks out-of-sync on the cluster, compare these fields first (the 9.0 lab's equivalent failure mode was a stale class/version here).
 | 7 | GitLab → `bookstore-infra` → + → Upload File → `vks-argo.yaml` → commit to main |
 | 8 | Edit `Desktop/bookstore-infra/addoninstall-cert-manager.yaml`: replace `<SUPERVISOR_NAMESPACE>` with `test-xxxxx` → Save |
 | 9 | Edit `Desktop/bookstore-infra/addoninstall-istio.yaml`: replace `<SUPERVISOR_NAMESPACE>` with `test-xxxxx` → Save |
 | 10 | Upload both addon YAMLs to `bookstore-infra` in GitLab → commit |
 | 11 | Repo root → Code → copy HTTPS URL: `https://gitlab.vcf.lab/root/argocd.git` |
+
+> 💡 Sanity-check values in the downloaded YAML (guide screenshots + `manifests/create-tkg-cluster-yaml/vks-01.yaml` in this repo): `apiVersion: cluster.x-k8s.io/v1beta2`, topology classRef `builtin-generic-v3.6.0` (namespace `vmware-system-vks-public`), `version: v1.35.5---vmware.1-vkr.1`, storageClass `vsan-default-storage-policy`. If ArgoCD later sticks out-of-sync on the cluster, compare these fields first (the 9.0 lab's equivalent failure mode was a stale class/version here).
 
 ### CLI + GUI: bookstore-infra App (Pg 237–244)
 
@@ -600,7 +603,8 @@ argocd cluster add vks-argo-admin@vks-argo vks-argo --kubeconfig vks-argo-kubeco
 ### CLI: Deploy Bookstore App via Argo CD (Pg 251–254)
 
 ```bash
-# Pg 251 — Add app repo
+# Pg 251 — Add app repo (pod GitLab mirror of github.com/tmm-demo-apps/bookstore-app,
+# plus the lab-local kubernetes/overlays/lab)
 argocd repo add https://gitlab.vcf.lab/root/bookstore-app.git \
   --name bookstore-app --project default --upsert --insecure-skip-server-verification
 
