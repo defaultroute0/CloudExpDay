@@ -3,7 +3,7 @@
 Actual YAMLs downloaded from the lab wizards (pod run, Aug 2026):
 
 - `create-vm-yaml-files/` — cli-vm VM, SSH load balancer, bootstrap secret (Module 3 Ch 2)
-- `create-pod-yaml-files/` — nginx Container Service instance + LB (Module 3 Ch 3)
+- `create-nginxpod-yaml-files/` — nginx Container Service instance + LB (Module 3 Ch 3)
 - `create-postgrespod-yaml-files/` — postgres StatefulSet + LB (Module 3 Ch 3)
 - `create-tkg-cluster-yaml/` — vks-01 cluster (Module 3 Ch 4; `namespace:` line pre-commented for the Argo CD chapter edits)
 
