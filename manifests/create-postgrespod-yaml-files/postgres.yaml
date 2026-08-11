@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: postgres
-  namespace: dev-bnnj5
+#  namespace: dev-bnnj5
 spec:
   replicas: 2
   selector:
